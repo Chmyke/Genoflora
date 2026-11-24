@@ -1,0 +1,6 @@
+# WHY: iteration order of hash containers is unspecified (and randomised per process in Rust):
+# the simulation must never depend on it. Sorted tables and BTreeMap exist for that.
+disallowed-types = [
+    { path = "std::collections::HashMap", reason = "unordered iteration breaks determinism; use a sorted table or BTreeMap" },
+    { path = "std::collections::HashSet", reason = "unordered iteration breaks determinism; use a sorted table or BTreeSet" },
+]

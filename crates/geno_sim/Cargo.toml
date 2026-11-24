@@ -1,0 +1,9 @@
+[package]
+name = "geno_sim"
+description = "Pure, deterministic cellular simulation of Genoflora (no external dependency)."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true

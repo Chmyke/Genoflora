@@ -1,0 +1,15 @@
+# Rust
+target/
+
+# Assistants et éditeurs
+.claude/settings.local.json
+.claude/worktrees/
+scheduled_tasks.lock
+.vs/
+.vscode/
+.idea/
+
+# Système
+*.log
+Thumbs.db
+Desktop.ini
