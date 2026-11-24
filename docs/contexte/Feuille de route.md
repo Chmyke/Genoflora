@@ -8,7 +8,7 @@
 ## Ouvert
 
 - Rendu 3D : Bevy, wgpu nu ou autre. À trancher avec un tableau comparatif avant d'en avoir besoin.
-- Parallélisme : GPU tentant, risques et parades dans `Parallélisme.md` ; quand le brancher reste à trancher.
+- Parallélisme : trois essais décidés (CPU, GPU, CPU + GPU), voir `Parallélisme.md`.
 - Équations du premier modèle d'auxine : partir de Jönsson 2006 ou Smith 2006.
 
 ## Prochaine étape

@@ -56,3 +56,20 @@ chaque changement coûte plus cher sur GPU.
 - https://docs.rs/crate/wgpu/^0.20.0 (CI sur WARP et lavapipe)
 - https://github.com/tracel-ai/cubecl
 - https://docs.rs/crate/rustyml/0.14.0/source/guide/en/src/Chapter-06/6.3._Parallel_Reductions.md
+
+## Décision : trois essais avant de choisir (2026-11-24, validée par Mickaël, pas commencée)
+
+Trois preuves de concept jetables dans `Spikes/`, sur le **même scénario** :
+une boule de cellules qui se poussent (mécanique), échangent une hormone (diffusion) et se
+divisent tous les K pas (naissances). Ce scénario touche les trois points durs : calcul lourd,
+échange entre voisines, nombre de cellules qui change.
+
+| Essai | Ce qui tourne où |
+|---|---|
+| CPU seul | tout sur le processeur, multithread (`rayon`) |
+| GPU seul | tout sur la carte (wgpu, WGSL), divisions comprises |
+| CPU + GPU | mécanique et diffusion sur GPU ; décisions et divisions sur CPU, tous les K pas |
+
+Mesures, fixées avant de coder : temps par pas à 1 000, 10 000, 100 000 et 1 000 000 de cellules ;
+même résultat que la version CPU à tolérance près ; effort (lignes, heures) et douleur de débogage.
+Le choix se fait sur ce tableau, puis les essais sont jetés.
