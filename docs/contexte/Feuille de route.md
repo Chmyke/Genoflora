@@ -40,6 +40,16 @@
   d'arbre ne montrera qu'un très jeune plant, jamais un arbre adulte.
 - Départ (2026-11-24) : la graine, germination comprise ; la plante va jusqu'à produire ses
   graines. Porte ouverte vers les générations et les mutations.
+- Après les graines (2026-11-24) : au choix, on continue avec la même plante ou l'on repart d'une
+  de ses graines. But lointain, design pas encore mûr : la graine doit elle-même émerger des
+  cellules (piste : un programme de floraison fait apparaître des cellules germinales qui copient
+  le génome avec mutation, s'entourent d'un tégument, cessent de se diviser et se détachent ; la
+  « graine » est un état atteint par des cellules, pas un objet codé).
+- Sol (2026-11-24, hypothèse de Claude, sans réponse) : coupe transparente comme un rhizotron
+  (racines contre une vitre), vraie technique scientifique et la plus lisible.
+- Reproductibilité (2026-11-24, hypothèse de Claude, sans réponse) : graine numérique + fichier
+  génome = exactement la même plante sur la même machine ; à de petits écarts près entre machines
+  (le GPU ne garantit pas les mêmes bits). Mesures exportables.
 
 ## Ouvert
 
