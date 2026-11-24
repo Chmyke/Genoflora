@@ -1,2 +1,9 @@
-//! Shared scenario of the three spikes. Not implemented yet: see `docs/Plan des essais.md`,
-//! section 7, step 1 (cells as struct of arrays, stateless hash, naive reference, checks V1-V4).
+//! Shared scenario of the three spikes: model, single-thread reference (oracle), validation and
+//! bench protocols, result files. See `docs/Plan des essais.md`.
+
+pub mod harness;
+pub mod model;
+pub mod reference;
+
+pub use harness::{Engine, cli};
+pub use model::{Cells, Grid, Params, divide, finish, interact};
