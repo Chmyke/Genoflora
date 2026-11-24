@@ -14,19 +14,37 @@
 - API GPU, choisie par Claude (2026-11-24) : wgpu (DX12 ou Vulkan) pour les essais. Raisons : Rust
   natif, n'importe quelle carte, testable sans GPU (WARP). CUDA (possible : carte NVIDIA) reste le
   recours si l'essai GPU bute sur une limite de wgpu (atomiques flottants, somme préfixe).
+- Génome (2026-11-24) : un programme qui mute, inspiré de vrais réseaux de gènes. Pas le génome
+  entier (Arabidopsis : environ 27 000 gènes) mais ses modules connus : WUS/CLV3 (pointe),
+  PIN/auxine (forme, gravitropisme), phytochromes (lumière), gibbérellines/DELLA (allongement),
+  CONSTANS/FT (floraison selon la durée du jour).
+- Environnement (2026-11-24) : une plante seule, le plus réel possible : lumière, gravité, eau et
+  hygrométrie, photosynthèse, cycle jour-nuit, saisons.
+- Temps multi-échelle (conséquence) : une division cellulaire prend des heures, une saison des
+  mois. Le direct montre les heures ; jours et saisons passent en accéléré, ce qui impose le modèle
+  hybride de la note (cellules fines aux pointes, organes figés ailleurs).
 
 ## Ouvert
 
 - Rendu 3D : Bevy, wgpu nu ou autre. À trancher avec un tableau comparatif avant d'en avoir besoin.
 - Parallélisme : trois essais décidés (CPU, GPU, CPU + GPU), voir `Parallélisme.md`.
 - Équations du premier modèle d'auxine : partir de Jönsson 2006 ou Smith 2006.
-- Questions de fond à trancher avant le jalon concerné : forme du génome (réglages fixes ou
-  programme qui mute), environnement (plante seule ou concurrence, sol, eau, gravité), rendu
-  (cellules visibles ou surface lisse), actions de l'utilisateur pendant la pousse (couper,
-  éclairer, injecter), code ouvert ou privé.
+- Questions de fond restantes : rendu (cellules visibles ou surface lisse), actions de
+  l'utilisateur pendant la pousse, code ouvert ou privé.
 
 ## Prochaine étape
 
 1. Les trois essais de calcul (CPU, GPU, CPU + GPU) : suivre `docs/Plan des essais.md`, section 7.
    Squelette prêt dans `Spikes/`, rien d'implémenté.
 2. Puis jalon 2 de la note : phyllotaxie sur une surface, angle moyen 137,5° ± 5°, sans spirale codée.
+
+## Ordre proposé des facteurs d'environnement (non validé)
+
+Chacun arrive avec son module de gènes et un critère chiffré tiré d'observations réelles.
+
+1. Gravité : la tige monte, la racine descend (auxine redistribuée).
+2. Lumière et phototropisme : la tige se courbe vers une lumière latérale.
+3. Photosynthèse et sucre : la croissance dépend de la lumière reçue.
+4. Jour-nuit : croissance et ouverture des stomates qui suivent le cycle.
+5. Eau et hygrométrie : racines, transport, flétrissement à sec.
+6. Saisons : floraison déclenchée par la durée du jour (CONSTANS/FT).
