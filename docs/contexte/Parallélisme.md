@@ -1,57 +1,58 @@
 # Parallélisme : CPU, threads ou GPU
 
-*2026-11-24. Recherche rapide ; « vérifié » = source ouverte, le reste est un souvenir à revérifier.*
+*2026-11-24, deux passes de recherche. « Vérifié » = source ouverte ; « souvenir » = à revérifier.*
 
-## Ordres de grandeur
+## Pourquoi le GPU est tentant
 
-| Étape | Cellules actives | Besoin |
-|---|---|---|
-| Jalon 2, phyllotaxie sur une surface | centaines à quelques milliers | un seul fil suffit (souvenir : les modèles de Jönsson et Smith tournaient sur un PC de 2006) |
-| Méristème 3D, quelques pointes | dizaines de milliers | plusieurs fils CPU |
-| Plante entière tout en cellules | centaines de milliers et plus | GPU, ou le modèle hybride de la note (tissu figé en organes) |
+- Un moteur cellulaire GPU récent (jax-morpho, alpha) annonce 1 à 2 millions de cellules à environ
+  32 ms par pas sur une RTX 4090, chiffre de ses auteurs (vérifié sur leur page, non reproduit).
+- Les modèles cellulaires sur GPU gagnent plusieurs ordres de grandeur sur le CPU (BioDynaMo 2021,
+  FLAME GPU) ; FLAME GPU a fait pousser un tissu de peau avec division (vérifié).
+- Atout propre au projet : les tampons de la simulation peuvent servir directement au rendu
+  (positions des cellules = instances dessinées), sans aller-retour CPU.
+- Mémoire négligeable : un million de cellules à 64 octets = 64 Mo.
 
-Le modèle hybride de la note réduit le besoin : seules les pointes et le cambium sont simulés finement.
+## Risques vérifiés et parades
 
-## Ce que dit l'existant (vérifié)
+| Risque | Ce qui se passe | Parade | Gravité après parade |
+|---|---|---|---|
+| Nombre de cellules qui change (mitose, mort) | Il faut ajouter des filles sans trou ni collision d'indices ; FLAME GPU signale la « parcimonie » due aux naissances et morts | Capacité préallouée ; décision de division en parallèle, puis somme préfixe pour placer les filles dans un ordre fixe | Moyenne |
+| Somme préfixe portable | L'algorithme rapide en une passe (« decoupled look-back ») suppose que le GPU garantit la progression des groupes ; Apple et ARM ne le font pas, la machine peut se figer | Somme préfixe en plusieurs passes (réduire puis balayer), lente mais sûre ; nos tableaux sont petits | Faible |
+| Pas d'addition atomique de flottants en WGSL | Accumuler des forces ou des flux d'auxine par « dispersion » est impossible ou non déterministe | Toujours « rassembler » : chaque cellule lit ses voisines et calcule sa propre somme, dans un ordre fixe. Aucun atomique flottant | Faible |
+| Déterminisme | Les atomiques et l'ordre des opérations changent les derniers bits ; d'un GPU à l'autre, jamais garanti (FMA, fonctions transcendantes) | Même GPU : bits identiques si rassemblement et ordre fixe des voisins. Entre machines : tolérance. Nos critères (angle 137,5° ± 5°) sont statistiques, donc robustes à ce bruit | Moyenne |
+| Recherche des voisines | 36 % du temps chez BioDynaMo (la mécanique : 51 %) | Grille uniforme reconstruite à chaque pas par tri par comptage | Faible |
+| Watchdog Windows (TDR) | Un calcul GPU de plus de 2 s fait réinitialiser le pilote (« device lost ») | Pas courts, plusieurs petits envois par image ; gérer la perte du périphérique | Faible |
+| Tests sans carte graphique | La vérification doit tourner partout | wgpu se teste sur WARP (DX12 logiciel, Windows) et lavapipe (Linux), comme son propre CI | Faible |
+| Seulement des flottants 32 bits | Pas de `f64` en WGSL ; une grande plante perd en précision loin de l'origine | Coordonnées locales par organe ou par pointe | Faible |
+| Divergence | Si chaque type de cellule suit une branche de code, les cœurs attendent | Génome = données (matrice de poids), le même code pour toutes les cellules | Faible |
+| Outillage et débogage | Pas de `println!` dans un noyau, débogueurs graphiques seulement (RenderDoc, souvenir) | Implémentation CPU de référence, comparée au GPU par les tests | Moyenne |
+| Langage des noyaux | WGSL : stable, verbeux. CubeCL (Rust `#[cube]`, cible wgpu, CUDA, ROCm) : 0.x, API mouvante. rust-gpu : orienté graphique, expérimental | WGSL à la main d'abord ; CubeCL à réévaluer | Moyenne |
+| Coût de développement | Chaque règle s'écrit en noyau et se teste contre la référence (souvenir : 2 à 3 fois l'effort CPU) | Ne porter sur GPU que les étapes chaudes | Haute |
 
-- Dans un modèle cellulaire « centre-based », la mécanique (voisins qui se repoussent) est
-  l'étape la plus coûteuse (BioDynaMo, Hesam et al. 2021, arXiv 2105.00039).
-- Les décisions de la cellule (cycle, division, gènes) vivent sur un temps plus lent que la
-  mécanique : environ 60 pas de mécanique par pas de cellule (Stack et Macklin, OpenACC 2021).
-  On peut donc paralléliser fort la mécanique et garder le reste simple.
-- Les GPU donnent des gains de plusieurs ordres de grandeur, mais surtout sur des modèles simples
-  (peu de dynamique interne). FLAME GPU a fait de la croissance de peau avec division.
-- Une somme flottante parallèle de `rayon` n'est pas reproductible (ordre de combinaison choisi par
-  le vol de travail). Remède : blocs de taille fixe, résultats rangés par indice, fusion en série
-  dans un ordre fixe ; interdire `par_iter().sum()` par clippy.
-- CubeCL écrit des noyaux GPU en Rust (`#[cube]`) et vise wgpu (donc Vulkan, DX12, Metal), CUDA et
-  autres. API encore jeune (versions 0.x).
+Le vrai risque n'est donc pas technique (chaque problème a une parade connue), c'est le **coût
+d'itération** : le projet est un bac à sable de règles biologiques qu'on va changer souvent, et
+chaque changement coûte plus cher sur GPU.
 
-## Difficultés propres au GPU
+## Architecture recommandée
 
-- **Division** : le nombre de cellules change. Il faut une compaction (somme préfixe) pour ajouter
-  les filles, et des tampons réalloués.
-- **Voisinage** : grille uniforme reconstruite à chaque pas (tri par case), classique mais à écrire.
-- **Déterminisme** : atomiques et flottants donnent des bits différents d'un GPU à l'autre ; les
-  tests deviennent des tolérances, plus des égalités.
-- **Tests** : la vérification doit tourner sans carte graphique (adaptateur logiciel ou CPU).
-
-## Recommandation
-
-1. Écrire la simulation en données « structure de tableaux » (positions, rayons, concentrations
-   en tableaux séparés) et un pas pur `état(t) -> état(t+1)` à double tampon : chaque cellule lit
-   l'ancien état, écrit le nouveau. C'est la forme qui se parallélise, sur CPU comme sur GPU.
-2. Les changements de structure (division, mort) se décident en parallèle puis s'appliquent en
-   série, dans l'ordre des indices : déterminisme garanti.
-3. Un seul fil tant qu'un banc d'essai ne prouve pas le besoin. Puis `rayon` sur la mécanique et
-   la diffusion, avec les réductions à blocs fixes. Le test « mêmes bits » reste vrai.
-4. GPU seulement quand le CPU plafonne (au-delà d'environ 100 000 cellules actives, à mesurer) :
-   alors la mécanique d'abord, via CubeCL ou wgpu, et une version CPU de référence gardée comme
-   oracle des tests.
+1. `geno_sim` (CPU, pur) reste la **référence** : déterministe au bit, lisible, où une règle naît.
+2. Les données sont dès maintenant en structure de tableaux, avec un pas à double tampon
+   (`état(t) -> état(t+1)`, rassemblement sans atomique) et une division en deux temps (décider,
+   puis placer par somme préfixe). C'est exactement la forme d'un noyau GPU.
+3. Un crate `geno_gpu` (wgpu) porte les étapes chaudes (mécanique, voisinage, diffusion
+   d'auxine). Ses tests comparent au CPU, à tolérance près, sur WARP dans `check.ps1`.
+4. Le rendu lit les tampons GPU directement : choisir un rendu sur wgpu (Bevy en est un).
 
 ## Sources
 
-- https://arxiv.org/abs/2105.00039 (BioDynaMo GPU)
+- https://arxiv.org/abs/2105.00039 (BioDynaMo GPU, répartition du temps)
 - https://pmc.ncbi.nlm.nih.gov/articles/PMC2936904 (FLAME GPU, cellules)
-- https://docs.rs/crate/rustyml/0.14.0/source/guide/en/src/Chapter-06/6.3._Parallel_Reductions.md
+- https://eprints.whiterose.ac.uk/128797/1/1-s2.0-S1569190X18300170-main.pdf (naissances et morts sur GPU)
+- https://pypi.org/project/jax-morpho/ (1 à 2 millions de cellules)
+- https://gridwise-webgpu.github.io/gridwise/scan-and-reduce (somme préfixe et progression)
+- https://escholarship.org/uc/item/0bk9z4bt (Decoupled Fallback, somme préfixe portable)
+- https://nvidia.github.io/warp/v1.19/user_guide/execution_and_performance/deterministic_execution.html
+- https://learn.microsoft.com/en-sg/WINDOWS-HARDWARE/DRIVERS/display/timeout-detection-and-recovery
+- https://docs.rs/crate/wgpu/^0.20.0 (CI sur WARP et lavapipe)
 - https://github.com/tracel-ai/cubecl
+- https://docs.rs/crate/rustyml/0.14.0/source/guide/en/src/Chapter-06/6.3._Parallel_Reductions.md
