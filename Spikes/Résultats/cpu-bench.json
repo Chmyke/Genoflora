@@ -1,0 +1,15 @@
+{
+  "engine": "cpu",
+  "machine": "32 threads",
+  "steady": [
+    {"cells": 1000, "median_ms": 0.1907, "p95_ms": 0.2275, "batched_ms": 0.2359},
+    {"cells": 10000, "median_ms": 0.7362, "p95_ms": 0.8540, "batched_ms": 0.8312},
+    {"cells": 100000, "median_ms": 2.6981, "p95_ms": 3.0808, "batched_ms": 3.0576},
+    {"cells": 300000, "median_ms": 7.4839, "p95_ms": 8.2365, "batched_ms": 8.3117},
+    {"cells": 1000000, "median_ms": 24.7270, "p95_ms": 28.8721, "batched_ms": 28.5007},
+    {"cells": 2000000, "median_ms": 58.5744, "p95_ms": 66.0895, "batched_ms": 65.7878},
+    {"cells": 4000000, "median_ms": 150.7694, "p95_ms": 167.3361, "batched_ms": 163.3770}
+  ],
+  "growth": {"steps": 1600, "capacity": 100000, "final_cells": 100000, "seconds": 3.2550},
+  "division": {"cells": 1000000, "cells_after_5_rounds": 1500058, "median_ms": 2.4859}
+}

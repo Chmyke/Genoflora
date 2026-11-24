@@ -265,7 +265,8 @@ impl GpuSim {
         pass.dispatch_workgroups_indirect(&self.indirect, 0);
         pass.set_pipeline(&self.p_sort);
         pass.set_bind_group(0, &self.g_sort[c], &[]);
-        pass.dispatch_workgroups(self.grid_cells.div_ceil(256) as u32, 1, 1);
+        let groups = self.grid_cells.div_ceil(256) as u32;
+        pass.dispatch_workgroups(groups.min(32768), groups.div_ceil(32768), 1);
         pass.set_pipeline(&self.p_step);
         pass.set_bind_group(0, &self.g_step[c], &[]);
         pass.dispatch_workgroups_indirect(&self.indirect, 0);

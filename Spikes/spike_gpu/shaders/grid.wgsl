@@ -29,7 +29,8 @@ fn scatter(@builtin(global_invocation_id) g: vec3<u32>) {
 
 @compute @workgroup_size(256)
 fn sort_cells(@builtin(global_invocation_id) g: vec3<u32>) {
-    let c = g.x;
+    // Dispatched in two dimensions (rows of 2^23 cells) to stay under 65535 groups per dimension.
+    let c = g.x + g.y * 8388608u;
     if (c >= P.grid_cells) { return; }
     let s = offsets[c];
     let e = offsets[c + 1u];

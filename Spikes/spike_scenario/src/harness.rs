@@ -204,7 +204,7 @@ pub fn bench(name: &str, machine: &str, make: Make, max_cells: usize) {
     let p = Params::load();
     println!("== bench {name} ({machine})");
     let mut rows = Vec::new();
-    for n in [1_000usize, 10_000, 100_000, 300_000, 1_000_000, 2_000_000, 4_000_000] {
+    for n in [1_000usize, 10_000, 100_000, 300_000, 1_000_000, 2_000_000, 4_000_000, 8_000_000, 16_000_000] {
         if n > max_cells {
             break;
         }
@@ -240,10 +240,31 @@ pub fn bench(name: &str, machine: &str, make: Make, max_cells: usize) {
     let seconds = t.elapsed().as_secs_f64();
     let reached = e.snapshot().count;
     println!("growth 1000 -> {reached} cells in {steps} steps: {seconds:.3} s");
+
+    // Cost of one division round at scale: 5 rounds on a tissue of one million cells and more.
+    let big = 1_000_000usize.min(max_cells);
+    let start = init(big, big * 2, &p);
+    let mut e = make(&p, &start);
+    let mut rounds: Vec<f64> = (0..5)
+        .map(|_| {
+            run(e.as_mut(), p.divide_every, false, &p, 10);
+            let t = Instant::now();
+            e.divide();
+            e.flush();
+            t.elapsed().as_secs_f64() * 1e3
+        })
+        .collect();
+    rounds.sort_by(|a, b| a.total_cmp(b));
+    let divide_ms = rounds[2];
+    let divided = e.snapshot().count;
+    println!("division round at {big} cells (5 rounds, now {divided} cells): median {divide_ms:.3} ms");
     write_result(
         &format!("{name}-bench"),
         &format!(
-            "{{\n  \"engine\": \"{name}\",\n  \"machine\": \"{machine}\",\n  \"steady\": [\n{}\n  ],\n  \"growth\": {{\"steps\": {steps}, \"capacity\": {cap}, \"final_cells\": {reached}, \"seconds\": {seconds:.4}}}\n}}\n",
+            "{{\n  \"engine\": \"{name}\",\n  \"machine\": \"{machine}\",\n  \"steady\": [\n{}\n  ],\n  \"growth\": {{\"steps\": {steps}, \"capacity\": {cap}, \"final_cells\": {reached}, \"seconds\": {seconds:.4}}},
+  \"division\": {{\"cells\": {big}, \"cells_after_5_rounds\": {divided}, \"median_ms\": {divide_ms:.4}}}
+}}
+",
             rows.join(",\n")
         ),
     );
