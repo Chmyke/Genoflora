@@ -27,5 +27,7 @@ Le rendu 3D viendra dans un crate séparé ; la simulation n'en dépendra jamais
 - Simulation déterministe : mêmes entrées, mêmes bits. Pas de `HashMap`/`HashSet` (clippy les
   refuse), pas d'horloge, tout aléa vient d'une graine.
 - `unsafe` interdit, pas d'`unwrap` en logique (lints du workspace).
+- Aucun comportement visible n'est codé (spirale des feuilles, circumnutation, tropismes) : il
+  émerge des règles locales des cellules ; les tests mesurent le résultat, jamais la règle.
 - Ne pas figer le modèle sur « seule la pointe vit » : des cellules anciennes peuvent grandir à leur
   rythme (épaississement du tronc).

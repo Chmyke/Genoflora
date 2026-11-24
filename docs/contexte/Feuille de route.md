@@ -54,9 +54,11 @@ Chacun arrive avec son module de gènes et un critère chiffré tiré d'observat
 7. Vent : la tige plie, et une plante secouée pousse plus courte et plus épaisse
    (thigmomorphogenèse, gènes TCH) ; critère : rapport hauteur/diamètre plus bas sous vent.
 
-## Signature visuelle d'un timelapse (critères de crédibilité, non validés)
+## Signature visuelle d'un timelapse (tests d'émergence, non validés)
 
-Ce qui fait qu'un timelapse « a l'air vivant », chacun mesurable :
+Ce qui fait qu'un timelapse « a l'air vivant ». Règle absolue : aucun de ces comportements n'est codé.
+Chacun doit émerger des règles locales des cellules ; il sert seulement de test qui mesure le
+résultat (par exemple : trajectoire de la pointe périodique, sans aucun sinus dans le code).
 
 - Circumnutation : la pointe décrit des ellipses en poussant (souvenir : période d'une à quelques
   heures selon l'espèce).
@@ -65,3 +67,10 @@ Ce qui fait qu'un timelapse « a l'air vivant », chacun mesurable :
 - Tige qui se réoriente vers la lumière en quelques heures.
 - Racines qui explorent, se ramifient, contournent les obstacles.
 - Bourgeons qui gonflent puis s'ouvrent, puis fleur, graine, déclin.
+
+Piste pour la circumnutation (souvenir, à revérifier) : une hypothèse classique la fait naître
+d'une boucle de gravitropisme avec retard. La tige penche, l'auxine migre vers le côté bas avec un
+délai, le côté bas pousse plus, la tige dépasse la verticale, et ainsi de suite (Israelsson et
+Johnsson 1967 ; voir aussi Bastien et al. 2013, graviproprioception). Il faudrait donc dans le
+modèle : un transport d'auxine qui prend du temps, et une croissance différente selon le flanc de
+la tige. L'ellipse en sortirait sans être écrite.
