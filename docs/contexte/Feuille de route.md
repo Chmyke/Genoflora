@@ -3,7 +3,7 @@
 ## Décidé
 
 - Langage : Rust, confirmé le 2026-11-24 après comparaison avec C, C++ et assembleur (le langage pèse ≈ ×1 sur la performance ; Rust interdit les erreurs de concurrence). Pas de variante SIMD dans les essais.
-- Dépôt GitHub privé `Genoflora`.
+- Dépôt GitHub public `Genoflora`, open source (MIT), à vocation scientifique (2026-11-24).
 - Finalité (2026-11-24, précisée) : un simulateur de timelapse de plante crédible. La croissance doit
   bouger comme dans les timelapses réels (racines qui explorent, bourgeons qui se forment, tige qui
   tourne, cycle de vie complet), sans reproduire une espèce réelle. Génome simplifié : quelques
@@ -25,15 +25,25 @@
   hygrométrie, photosynthèse, cycle jour-nuit, saisons, vent.
 - Temps multi-échelle (conséquence) : une division cellulaire prend des heures, une saison des
   mois. Le direct montre les heures ; jours et saisons passent en accéléré, ce qui impose le modèle
-  hybride de la note (cellules fines aux pointes, organes figés ailleurs).
+  hybride de la note (cellules fines aux pointes, tissu ancien mis à jour plus rarement).
+- Interaction (2026-11-24) : aucune. On regarde la plante pousser, on n'agit pas (couper, tailler,
+  c'est le domaine d'un autre projet, le jeu de bonsaï).
+- Rendu (2026-11-24) : cellulaire, jamais une surface lisse posée par-dessus. On zoome de la
+  plante entière jusqu'à la cellule, et l'on voit la vie interne : ressources qui circulent,
+  photosynthèse, stomates qui s'ouvrent, eau aspirée, cellules qui meurent. Les cellules ne sont
+  pas des boules : elles s'étirent et prennent des formes.
+- Conséquence sur le modèle hybride : le tissu « figé » garde ses cellules (on doit pouvoir y
+  zoomer) ; il est seulement mis à jour moins souvent, pas remplacé par de la géométrie.
 
 ## Ouvert
 
 - Rendu 3D : Bevy, wgpu nu ou autre. À trancher avec un tableau comparatif avant d'en avoir besoin.
 - Parallélisme : trois essais décidés (CPU, GPU, CPU + GPU), voir `Parallélisme.md`.
 - Équations du premier modèle d'auxine : partir de Jönsson 2006 ou Smith 2006.
-- Questions de fond restantes : rendu (cellules visibles ou surface lisse), actions de
-  l'utilisateur pendant la pousse, code ouvert ou privé.
+- Forme des cellules : comment elles s'étirent. Pistes : ellipsoïdes qui s'allongent selon un
+  axe ; ou rendu par cellules de Voronoï autour des centres (polyèdres jointifs, comme un vrai
+  tissu, sans changer la mécanique) ; ou cellules déformables (modèle à sommets, plus cher).
+- Rendu 3D multi-échelle : de la plante à la cellule, avec niveaux de détail.
 
 ## Prochaine étape
 

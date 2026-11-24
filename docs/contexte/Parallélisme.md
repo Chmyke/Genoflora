@@ -57,7 +57,7 @@ chaque changement coûte plus cher sur GPU.
 - https://github.com/tracel-ai/cubecl
 - https://docs.rs/crate/rustyml/0.14.0/source/guide/en/src/Chapter-06/6.3._Parallel_Reductions.md
 
-## Décision : trois essais avant de choisir (2026-11-24, validée par Mickaël, pas commencée)
+## Décision : trois essais avant de choisir (2026-11-24, validée, pas commencée)
 
 Trois preuves de concept jetables dans `Spikes/`, sur le **même scénario** :
 une boule de cellules qui se poussent (mécanique), échangent une hormone (diffusion) et se
