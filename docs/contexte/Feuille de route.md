@@ -4,11 +4,14 @@
 
 - Langage : Rust, confirmé le 2026-11-24 après comparaison avec C, C++ et assembleur (le langage pèse ≈ ×1 sur la performance ; Rust interdit les erreurs de concurrence). Pas de variante SIMD dans les essais.
 - Dépôt GitHub privé `Genoflora`.
-- Finalité (2026-11-24) : un vrai simulateur, scientifique assumé, aussi fidèle que possible à la
-  biologie, avec une belle interface. Conséquence : les modèles partent des publications (Jönsson,
-  Smith, Gruel), avec leurs paramètres, et chaque jalon se compare à une observation réelle.
-- Temps (2026-11-24) : en direct, accélérable, c'est la cible ; précalcul puis replay accepté en
-  repli si la performance ne suit pas.
+- Finalité (2026-11-24, précisée) : un simulateur de timelapse de plante crédible. La croissance doit
+  bouger comme dans les timelapses réels (racines qui explorent, bourgeons qui se forment, tige qui
+  tourne, cycle de vie complet), sans reproduire une espèce réelle. Génome simplifié : quelques
+  modules inspirés du réel suffisent. La science sert la crédibilité du mouvement, pas l'exactitude.
+- Temps (2026-11-24, précisé) : toujours en accéléré, comme un timelapse (une seconde affichée =
+  des minutes à des heures de plante). Le temps réel n'a pas d'intérêt. Conséquence : il faut
+  plusieurs pas de simulation par image, donc le débit (pas par seconde) compte encore plus ; le
+  précalcul puis replay reste un repli naturel.
 - Plateforme (2026-11-24) : PC Windows seul, jamais le web. Machine de référence : Ryzen 9 7950X3D
   (16 cœurs), RTX 4080 SUPER.
 - API GPU, choisie par Claude (2026-11-24) : wgpu (DX12 ou Vulkan) pour les essais. Raisons : Rust
@@ -50,3 +53,15 @@ Chacun arrive avec son module de gènes et un critère chiffré tiré d'observat
 6. Saisons : floraison déclenchée par la durée du jour (CONSTANS/FT).
 7. Vent : la tige plie, et une plante secouée pousse plus courte et plus épaisse
    (thigmomorphogenèse, gènes TCH) ; critère : rapport hauteur/diamètre plus bas sous vent.
+
+## Signature visuelle d'un timelapse (critères de crédibilité, non validés)
+
+Ce qui fait qu'un timelapse « a l'air vivant », chacun mesurable :
+
+- Circumnutation : la pointe décrit des ellipses en poussant (souvenir : période d'une à quelques
+  heures selon l'espèce).
+- Croissance concentrée juste sous la pointe (zone d'élongation), le reste se fige.
+- Feuilles qui montent la nuit et s'abaissent le jour (nyctinastie).
+- Tige qui se réoriente vers la lumière en quelques heures.
+- Racines qui explorent, se ramifient, contournent les obstacles.
+- Bourgeons qui gonflent puis s'ouvrent, puis fleur, graine, déclin.
