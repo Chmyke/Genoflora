@@ -34,6 +34,12 @@
   pas des boules : elles s'étirent et prennent des formes.
 - Conséquence sur le modèle hybride : le tissu « figé » garde ses cellules (on doit pouvoir y
   zoomer) ; il est seulement mis à jour moins souvent, pas remplacé par de la géométrie.
+- Type de plante (2026-11-24) : aucun n'est fixé, le génome décide (herbe, buisson ou arbre).
+- Échelle (2026-11-24) : vraies tailles de cellules, donc une petite plante (quelques centimètres
+  pour environ un million de cellules). Le zoom montre de vraies cellules. Conséquence : un génome
+  d'arbre ne montrera qu'un très jeune plant, jamais un arbre adulte.
+- Départ (2026-11-24) : la graine, germination comprise ; la plante va jusqu'à produire ses
+  graines. Porte ouverte vers les générations et les mutations.
 
 ## Ouvert
 
