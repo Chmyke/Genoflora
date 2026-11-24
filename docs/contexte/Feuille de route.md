@@ -45,11 +45,11 @@
   cellules (piste : un programme de floraison fait apparaître des cellules germinales qui copient
   le génome avec mutation, s'entourent d'un tégument, cessent de se diviser et se détachent ; la
   « graine » est un état atteint par des cellules, pas un objet codé).
-- Sol (2026-11-24, hypothèse de Claude, sans réponse) : coupe transparente comme un rhizotron
-  (racines contre une vitre), vraie technique scientifique et la plus lisible.
-- Reproductibilité (2026-11-24, hypothèse de Claude, sans réponse) : graine numérique + fichier
-  génome = exactement la même plante sur la même machine ; à de petits écarts près entre machines
-  (le GPU ne garantit pas les mêmes bits). Mesures exportables.
+- Sol (2026-11-24) : semi-transparent, en volume. On voit les racines en 3D à travers la terre,
+  pas dans une simple coupe.
+- Reproductibilité (2026-11-24) : graine numérique + fichier génome = exactement la même plante sur
+  la même machine ; à de petits écarts près entre machines (le GPU ne garantit pas les mêmes bits).
+  Mesures exportables.
 
 ## Ouvert
 
