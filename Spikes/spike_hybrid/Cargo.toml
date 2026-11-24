@@ -1,0 +1,12 @@
+[package]
+name = "spike_hybrid"
+description = "Mechanics and diffusion on GPU, division decided on CPU every K steps. Reuses spike_gpu shaders."
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[dependencies]
+spike_scenario = { path = "../spike_scenario" }
+
+[lints]
+workspace = true

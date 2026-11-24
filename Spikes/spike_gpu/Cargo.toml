@@ -1,0 +1,12 @@
+[package]
+name = "spike_gpu"
+description = "GPU only, wgpu + WGSL, division on GPU. Planned dependencies: wgpu, pollster, bytemuck."
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[dependencies]
+spike_scenario = { path = "../spike_scenario" }
+
+[lints]
+workspace = true

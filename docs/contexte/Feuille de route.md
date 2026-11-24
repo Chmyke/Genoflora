@@ -13,5 +13,6 @@
 
 ## Prochaine étape
 
-Jalon 2 de la note : phyllotaxie sur une surface. Critère : angle moyen entre primordia successifs
-à 137,5° ± 5°, sans que la spirale soit codée. D'abord le plan du prototype, puis le code.
+1. Les trois essais de calcul (CPU, GPU, CPU + GPU) : suivre `docs/Plan des essais.md`, section 7.
+   Squelette prêt dans `Spikes/`, rien d'implémenté.
+2. Puis jalon 2 de la note : phyllotaxie sur une surface, angle moyen 137,5° ± 5°, sans spirale codée.

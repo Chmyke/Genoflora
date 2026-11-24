@@ -1,0 +1,12 @@
+[package]
+name = "spike_cpu"
+description = "CPU only, rayon with fixed-size blocks. Planned dependency: rayon."
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[dependencies]
+spike_scenario = { path = "../spike_scenario" }
+
+[lints]
+workspace = true

@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
+# Throwaway spikes live in their own workspace, outside check.ps1.
+exclude = ["Spikes"]
 
 [workspace.package]
 edition = "2024"
