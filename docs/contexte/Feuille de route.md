@@ -19,7 +19,7 @@
   PIN/auxine (forme, gravitropisme), phytochromes (lumière), gibbérellines/DELLA (allongement),
   CONSTANS/FT (floraison selon la durée du jour).
 - Environnement (2026-11-24) : une plante seule, le plus réel possible : lumière, gravité, eau et
-  hygrométrie, photosynthèse, cycle jour-nuit, saisons.
+  hygrométrie, photosynthèse, cycle jour-nuit, saisons, vent.
 - Temps multi-échelle (conséquence) : une division cellulaire prend des heures, une saison des
   mois. Le direct montre les heures ; jours et saisons passent en accéléré, ce qui impose le modèle
   hybride de la note (cellules fines aux pointes, organes figés ailleurs).
@@ -48,3 +48,5 @@ Chacun arrive avec son module de gènes et un critère chiffré tiré d'observat
 4. Jour-nuit : croissance et ouverture des stomates qui suivent le cycle.
 5. Eau et hygrométrie : racines, transport, flétrissement à sec.
 6. Saisons : floraison déclenchée par la durée du jour (CONSTANS/FT).
+7. Vent : la tige plie, et une plante secouée pousse plus courte et plus épaisse
+   (thigmomorphogenèse, gènes TCH) ; critère : rapport hauteur/diamètre plus bas sous vent.
