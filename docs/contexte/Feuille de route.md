@@ -8,6 +8,7 @@
 ## Ouvert
 
 - Rendu 3D : Bevy, wgpu nu ou autre. À trancher avec un tableau comparatif avant d'en avoir besoin.
+- Parallélisme : recommandation dans `Parallélisme.md` (un fil, puis rayon, puis GPU sur mesure), non validée.
 - Équations du premier modèle d'auxine : partir de Jönsson 2006 ou Smith 2006.
 
 ## Prochaine étape
