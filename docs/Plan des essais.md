@@ -1,6 +1,6 @@
 # Plan des essais : CPU, GPU, CPU + GPU
 
-*Rédigé le 2026-11-24, pas commencé. But unique : choisir l'architecture de calcul de Genoflora
+*Rédigé le 2026-11-24, exécuté le 2026-11-25 (résultats et écarts au plan : `Spikes/Verdict.md`). But unique : choisir l'architecture de calcul de Genoflora
 sur des mesures, pas sur une intuition. Tout le code des essais est jetable.*
 
 Contexte et risques : `docs/contexte/Parallélisme.md`.

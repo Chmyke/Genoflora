@@ -73,3 +73,12 @@ divisent tous les K pas (naissances). Ce scénario touche les trois points durs 
 Mesures, fixées avant de coder : temps par pas à 1 000, 10 000, 100 000 et 1 000 000 de cellules ;
 même résultat que la version CPU à tolérance près ; effort (lignes, heures) et douleur de débogage.
 Le choix se fait sur ce tableau, puis les essais sont jetés.
+
+## Résultat des essais (2026-11-25, en attente de validation)
+
+Détail : `Spikes/Verdict.md`. Les trois essais passent toute la validation. Population tenue à
+30 pas par seconde : CPU 1,25 million de cellules, GPU 11 millions. Division à 1 million de
+cellules : 0,76 ms sur GPU, 11,4 ms en relisant sur le CPU. Recommandation : CPU + GPU, c'est-à-dire
+`geno_sim` en référence CPU où naît chaque règle, et un moteur wgpu pour faire tourner la plante,
+division comprise. Leçons : un tissu qui se divise est chaotique (comparaison exacte sur horizon
+court seulement) ; les forces doivent être continues.

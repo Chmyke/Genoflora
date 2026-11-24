@@ -54,7 +54,7 @@
 ## Ouvert
 
 - Rendu 3D : Bevy, wgpu nu ou autre. À trancher avec un tableau comparatif avant d'en avoir besoin.
-- Parallélisme : trois essais décidés (CPU, GPU, CPU + GPU), voir `Parallélisme.md`.
+- Parallélisme : essais faits, verdict à valider (`Spikes/Verdict.md`).
 - Équations du premier modèle d'auxine : partir de Jönsson 2006 ou Smith 2006.
 - Forme des cellules : comment elles s'étirent. Pistes : ellipsoïdes qui s'allongent selon un
   axe ; ou rendu par cellules de Voronoï autour des centres (polyèdres jointifs, comme un vrai
@@ -63,8 +63,8 @@
 
 ## Prochaine étape
 
-1. Les trois essais de calcul (CPU, GPU, CPU + GPU) : suivre `docs/Plan des essais.md`, section 7.
-   Squelette prêt dans `Spikes/`, rien d'implémenté.
+1. Valider le verdict des essais (`Spikes/Verdict.md`, recommandation : CPU + GPU), puis supprimer
+   `Spikes/` et la branche `essai-deuxieme-hormone`.
 2. Puis jalon 2 de la note : phyllotaxie sur une surface, angle moyen 137,5° ± 5°, sans spirale codée.
 
 ## Ordre proposé des facteurs d'environnement (non validé)
