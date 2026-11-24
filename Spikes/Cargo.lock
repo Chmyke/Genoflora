@@ -799,6 +799,7 @@ dependencies = [
 name = "spike_hybrid"
 version = "0.0.0"
 dependencies = [
+ "spike_gpu",
  "spike_scenario",
 ]
 

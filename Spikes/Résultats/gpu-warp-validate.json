@@ -1,0 +1,15 @@
+{
+  "engine": "gpu-warp",
+  "machine": "Microsoft Basic Render Driver (Dx12)",
+  "pass": true,
+  "bits_identical": true,
+  "checks": [
+    {"check": "V1a", "ok": true, "detail": "exact, short horizon. 1000 cells, cap 8192, 200 steps: count 2000 vs ref 2000, position gap 1.37e-4 r (max 1e-3), hormone mass gap 8.53e-9 (max 1e-4)"},
+    {"check": "V1b", "ok": true, "detail": "capacity ceiling. 1000 cells, cap 1500, 300 steps: count 1500 vs ref 1500, position gap 9.15e-5 r (max 1e-3), hormone mass gap 3.15e-9 (max 1e-4)"},
+    {"check": "V1c", "ok": true, "detail": "statistical, long horizon. 1000 cells, cap 8192, 600 steps: count 7216 vs ref 7216, shape gap 3.90e-6 (max 1e-3), position gap 3.42e-1 r (informative), hormone mass gap 2.85e-6 (max 1e-4)"},
+    {"check": "V2", "ok": true, "detail": "hormone mass drift over 1000 steps: 6.72e-8 (max 1e-5)"},
+    {"check": "V3", "ok": true, "detail": "division 1000 -> 1104 cells: volume gap 4.89e-9, hormone gap 0.00e0 (max 1e-5)"},
+    {"check": "V4", "ok": true, "detail": "worst overlap after 300 steps: 9.8 % of radius (max 20 %)"},
+    {"check": "V5", "ok": true, "detail": "two runs bit-identical: true (wished, not required)"}
+  ]
+}
