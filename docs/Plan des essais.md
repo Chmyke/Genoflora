@@ -75,7 +75,7 @@ compte pas au classement.
   bout (attente de fin du GPU comprise).
 - **Croissance** : de 1 000 à 100 000 cellules avec divisions ; temps total.
 - **Chiffre clé** : la plus grande population tenue à **30 pas par seconde** (≤ 33 ms par pas).
-- Build `--release`, machine branchée, rien d'autre de lourd en cours ; noter CPU, GPU, pilote.
+- Machine de référence : Ryzen 9 7950X3D, RTX 4080 SUPER (Windows). Build `--release`, machine branchée, rien d'autre de lourd en cours ; noter CPU, GPU, pilote.
 - Sortie : un fichier `Spikes/Résultats/<essai>.json` par essai, mêmes champs pour les trois.
 
 ## 6. Grille de choix (fixée avant de coder)
