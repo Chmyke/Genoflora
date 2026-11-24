@@ -2,7 +2,7 @@
 
 ## Décidé
 
-- Langage : Rust (workspace, crate de simulation pur et sans dépendance).
+- Langage : Rust, confirmé le 2026-11-24 après comparaison avec C, C++ et assembleur (le langage pèse ≈ ×1 sur la performance ; Rust interdit les erreurs de concurrence). Pas de variante SIMD dans les essais.
 - Dépôt GitHub privé `Genoflora`.
 
 ## Ouvert
