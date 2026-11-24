@@ -20,6 +20,10 @@
 - Rendu 3D : Bevy, wgpu nu ou autre. À trancher avec un tableau comparatif avant d'en avoir besoin.
 - Parallélisme : trois essais décidés (CPU, GPU, CPU + GPU), voir `Parallélisme.md`.
 - Équations du premier modèle d'auxine : partir de Jönsson 2006 ou Smith 2006.
+- Questions de fond à trancher avant le jalon concerné : forme du génome (réglages fixes ou
+  programme qui mute), environnement (plante seule ou concurrence, sol, eau, gravité), rendu
+  (cellules visibles ou surface lisse), actions de l'utilisateur pendant la pousse (couper,
+  éclairer, injecter), code ouvert ou privé.
 
 ## Prochaine étape
 
