@@ -281,6 +281,7 @@ mod tests {
     fn diffusion_conserves_the_hormone() -> Result<(), EngineError> {
         let p = Params {
             production: 0.0,
+            light_production: 0.0,
             decay: 0.0,
             ck_production: 0.0,
             ck_decay: 0.0,
@@ -304,7 +305,7 @@ mod tests {
     // withstands (`soil_grip / mob_rep` of a radius).
     #[test]
     fn cells_do_not_pile_up() -> Result<(), EngineError> {
-        let p = in_open_air(Params::default());
+        let p = on_their_own(Params::default());
         let mut e = judge(&p, 300, 300);
         run(&mut e, 300, None);
         let overlap = worst_overlap(&e.snapshot()?);
@@ -333,11 +334,13 @@ mod tests {
         }
     }
 
-    /// The same genome with no soil around it: what the cells do on their own.
-    fn in_open_air(p: Params) -> Params {
+    /// The same genome with no soil to hold it and no light to feed it: what the cells do on
+    /// their own.
+    fn on_their_own(p: Params) -> Params {
         Params {
             soil_grip: 0.0,
             soil_hardness: 0.0,
+            light_production: 0.0,
             ..p
         }
     }
@@ -357,7 +360,7 @@ mod tests {
     // grows when it holds enough auxin. The tests measure what comes out.
     #[test]
     fn a_seed_grows_a_column_that_goes_down_with_the_hormone_at_its_tip() -> Result<(), EngineError> {
-        let p = in_open_air(frugal());
+        let p = on_their_own(frugal());
         let cells = germinate(&p)?;
         let l = lie(&cells, p.gravity);
         assert!(cells.count >= 100, "only {} cells", cells.count);
@@ -369,7 +372,7 @@ mod tests {
 
     #[test]
     fn the_column_follows_gravity_wherever_it_points() -> Result<(), EngineError> {
-        let p = in_open_air(Params {
+        let p = on_their_own(Params {
             gravity: [0.6, 0.0, 0.8],
             ..frugal()
         });
@@ -400,7 +403,7 @@ mod tests {
     // source and a sink emerge.
     #[test]
     fn pumps_blind_to_gravity_make_no_column_yet() -> Result<(), EngineError> {
-        let p = in_open_air(Params {
+        let p = on_their_own(Params {
             gravisense: 0.0,
             ..frugal()
         });
@@ -417,11 +420,13 @@ mod tests {
             let q = grow_seed(&p, 1024, 24_000)?.pr[0];
             Ok((q[0] * q[0] + q[1] * q[1] + q[2] * q[2]).sqrt())
         };
+        // Unlit, so that the soil is the only difference.
         let soft = Params {
             soil_hardness: 0.0,
+            light_production: 0.0,
             ..frugal()
         };
-        let (held, free) = (drift(soft)?, drift(in_open_air(soft))?);
+        let (held, free) = (drift(soft)?, drift(on_their_own(soft))?);
         // Measured 2026-11-25: 1.48 against 2.54.
         eprintln!("seed cell drift: {held:.2} in the soil, {free:.2} in the open air");
         assert!(held <= 0.7 * free, "{held} against {free}");
@@ -453,7 +458,6 @@ mod tests {
     fn light_made_auxin_lifts_part_of_the_plant_out_of_the_soil() -> Result<(), EngineError> {
         let p = Params {
             gravisense: 0.1,
-            light_production: 0.03,
             ..frugal()
         };
         let cells = germinate(&p)?;
@@ -476,7 +480,10 @@ mod tests {
     // that; it is expected to break the day a shoot emerges (light-made auxin off).
     #[test]
     fn nothing_comes_out_of_the_soil_yet() -> Result<(), EngineError> {
-        let p = frugal();
+        let p = Params {
+            light_production: 0.0,
+            ..frugal()
+        };
         let cells = germinate(&p)?;
         let out = cells
             .alive()
@@ -507,7 +514,7 @@ mod tests {
     // up with the flow only shows on a big tissue: `geno_gpu/tests/emergence.rs` measures it.
     #[test]
     fn the_stretching_genome_stretches_its_cells() -> Result<(), EngineError> {
-        let p = in_open_air(stretching());
+        let p = on_their_own(stretching());
         let l = lie(&grow_seed(&p, 1024, 12_000)?, p.gravity);
         assert!(l.stretch >= 2.0, "{l:?}");
         Ok(())

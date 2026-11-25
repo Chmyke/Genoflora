@@ -262,6 +262,7 @@ mod tests {
         let p = Params {
             diffusion: 0.0,
             production: 0.0,
+            light_production: 0.0,
             decay: 0.0,
             ..Params::default()
         };

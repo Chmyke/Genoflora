@@ -230,8 +230,9 @@ croissance ; la carte les arrondit moins finement, et une division y bascule d'u
 
 Lumière et auxine (2026-11-25, piste choisie par Mickaël). Une capacité de cellule : elle
 fabrique de l'auxine partout, et davantage à la lumière (`light_production`, par unité de volume
-en pleine lumière ; la lumière nourrit les sucres dont l'auxine est faite). Éteinte dans le
-génome par défaut, en attendant la décision de Mickaël.
+en pleine lumière ; la lumière nourrit les sucres dont l'auxine est faite). Allumée dans le
+génome par défaut à 0,03 (décision de Mickaël, 2026-11-25) : la plante de référence sort de terre.
+Les tests du mécanisme de la racine tournent sans sol ni lumière (`on_their_own`).
 
 Mesuré, juge (1 024 cellules, trois graines, génome à cellules rondes) :
 
@@ -265,7 +266,6 @@ Observé sans le corriger : deux essais à grande taille sur la carte se sont ar
 GPU dépassée, puis soumission refusée). Cause probable : la grille qui grossit avec l'étirement
 des cellules (limite déjà notée). À traiter avant de viser le million de cellules.
 
-Prochaine étape, à trancher : allumer ou non la lumière → auxine dans le génome par défaut, puis
-donner au haut une pointe à lui. Piste : l'identité des cellules (tige ou racine), qui émergerait
+Prochaine étape, à trancher : donner au haut une pointe à lui. Piste : l'identité des cellules (tige ou racine), qui émergerait
 de ce qu'une cellule a vécu (lumière reçue, rapport auxine/cytokinine) et changerait sa réaction à
 l'auxine ; la cytokinine seule a déjà échoué parce qu'elle restait près de la racine.

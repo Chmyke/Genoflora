@@ -107,7 +107,7 @@ impl Default for Params {
             flux_half: 0.01,
             gravisense: 0.3,
             production: 0.001,
-            light_production: 0.0,
+            light_production: 0.03,
             decay: 0.001,
             // Off in the default genome: measured on 2026-11-25, cytokinin that only diffuses
             // makes no second pole (see docs/contexte/Feuille de route.md).

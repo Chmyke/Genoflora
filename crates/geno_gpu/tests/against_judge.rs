@@ -57,10 +57,7 @@ fn engine(p: &Params, n: usize, capacity: usize, adapter: Adapter) -> Result<Gpu
 fn matches_the_judge_cell_by_cell_on_a_short_run() -> Result<(), EngineError> {
     on_each_adapter(|adapter| {
         // The test tissue straddles the soil surface: part of it in the dark, part in the light.
-        let p = Params {
-            light_production: 0.03,
-            ..Params::default()
-        };
+        let p = Params::default();
         let start = lattice(500, 4096, &p);
         let gap = gap_to_judge(
             &mut GpuSim::new(&p, &start, adapter)?,
@@ -102,6 +99,7 @@ fn diffusion_conserves_the_hormone() -> Result<(), EngineError> {
     on_each_adapter(|adapter| {
         let p = Params {
             production: 0.0,
+            light_production: 0.0,
             decay: 0.0,
             ck_production: 0.0,
             ck_decay: 0.0,
@@ -127,7 +125,7 @@ fn division_conserves_volume_and_hormone() -> Result<(), EngineError> {
 #[test]
 fn cells_do_not_pile_up() -> Result<(), EngineError> {
     on_each_adapter(|adapter| {
-        // In the open air: in the soil, cells may press into each other by what it withstands.
+        // Without soil: in the soil, cells may press into each other by what it withstands.
         let p = Params {
             soil_grip: 0.0,
             soil_hardness: 0.0,
@@ -170,6 +168,7 @@ fn a_seed_germinates_like_on_the_judge() -> Result<(), EngineError> {
             half_sat: 10.0,
             polar: 0.1,
             ck_production: 0.0001,
+            light_production: 0.0,
             ..Params::default()
         };
         // Exact on WARP only (measured 2026-11-25: equal for 4000 steps, apart by 6000: the cube
