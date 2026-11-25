@@ -17,7 +17,8 @@ pub struct Cell {
     /// Hormone amounts (auxin, cytokinin).
     pub h: [f32; 2],
     /// Polarity of the auxin pumps (PIN): xyz is the side of the cell where they sit, its length
-    /// (at most 1) how strongly they gather there; w is unused (GPU alignment).
+    /// (at most 1) how strongly they gather there. The fourth slot is not about the pumps: it
+    /// keeps the light the cell received at its last step, for display only (no rule reads it).
     pub pin: [f32; 4],
     /// How young the cell is, from 1 (it can divide) to 0 (mature: it only grows).
     pub youth: f32,

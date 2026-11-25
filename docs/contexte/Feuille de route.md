@@ -62,9 +62,14 @@
   monte, la racine descend), les feuilles ensuite, sans angle imposé. L'ancien jalon « phyllotaxie
   à 137,5° ± 5° » est abandonné comme objectif ; l'angle reste une mesure de vérification.
 
+- Rendu 3D (2026-11-25, tranché par Mickaël sur tableau comparatif) : wgpu nu et une fenêtre
+  (winit), dans un crate séparé `geno_view`. Les cellules sont dessinées là où elles sont déjà, sur
+  la carte, sans copie. Bevy écarté (grosse dépendance, copie des cellules à chaque image), la 3D
+  dans une page web aussi (relecture seulement, contraire à « jamais le web »). Première version :
+  la plante en direct, caméra libre, pause, mêmes couleurs que la visionneuse.
+
 ## Ouvert
 
-- Rendu 3D : Bevy, wgpu nu ou autre. À trancher avec un tableau comparatif avant d'en avoir besoin.
 - Équations du premier modèle d'auxine : partir de Jönsson 2006 ou Smith 2006.
 - Forme des cellules : comment elles s'étirent. Pistes : ellipsoïdes qui s'allongent selon un
   axe ; ou rendu par cellules de Voronoï autour des centres (polyèdres jointifs, comme un vrai
@@ -383,6 +388,36 @@ ou en coupe, relevé par relevé, avec la lecture d'une cellule au survol. Deux 
 Le dossier `sorties/` n'est pas versionné. C'est une sonde, pas le rendu 3D final (toujours
 ouvert) : dessin en 2D, ronds à la place des ellipsoïdes, quelques dizaines de milliers de cellules.
 La lumière reçue de chaque cellule est recalculée à l'export (`checks::light_on`, toutes les paires).
+
+Vue 3D, première version (2026-11-25, `geno_view`). La plante pousse en direct dans une fenêtre :
+chaque cellule est dessinée comme son vrai ellipsoïde (un carré face à la caméra par cellule, le
+calcul du rayon dans le fragment : forme exacte, sans maillage), directement depuis les tampons
+de la simulation, sans copie. Le sol est une nappe translucide à la surface ; les cellules sous
+terre sont teintées.
+
+- Lancer : `cargo run --release -p geno_view` (pour un essai par l'IA : le binaire construit,
+  par `ecran-de-test.ps1`).
+- Touches : espace met en pause ; 1 à 6 choisissent la couleur (lumière reçue, jeunesse, auxine,
+  cytokinine, sens des pompes, force des pompes) ; C coupe la plante en deux pour voir dedans ;
+  flèches haut et bas changent la vitesse ; F recadre et suit la plante.
+- Souris : glisser à gauche tourne, glisser à droite monte et descend, la molette zoome.
+- Le titre de la fenêtre donne la couleur affichée, le nombre de cellules et le pas.
+- Sans fenêtre : `geno_view --capture image.png [steps=21000] [mode=1..6] [cut]`
+  (`docs/images/Vue 3D, jeunesse.png`).
+
+Pour l'affichage, la lumière reçue par chaque cellule est gardée dans la quatrième case de la
+polarité des pompes (aucune règle ne la lit). `GpuSim` peut se construire sur un adaptateur
+choisi par l'appelant et prête ses tampons (`on_adapter`, `drawn`).
+
+Vérifié : hors écran sur WARP, une cellule connue apparaît à la bonne taille (au pixel près), de
+la bonne forme une fois allongée, de la bonne couleur, et disparaît en coupe. Essai en fenêtre
+sur l'écran de droite : 968 puis 1 834 cellules en quatre secondes, environ 480 pas par seconde.
+Non vérifié par l'IA : l'image de la fenêtre elle-même (pas de capture de l'écran) et le confort
+de la caméra.
+
+Limites de cette version : pas de texte ni de légende dans la fenêtre (tout est dans le titre),
+échelles d'auxine et de cytokinine fixes, pas d'ombres portées ni de niveaux de détail, capacité
+de 131 072 cellules, une lecture des cellules par seconde pour le compte et le cadrage.
 
 Prochaine étape : mesurer la couronne (lobes), puis fixer la taille du foyer de la pointe de tige
 (les cellules jeunes retiennent leurs voisines, WUS/CLV3), puis un maximum d'auxine étroit à la

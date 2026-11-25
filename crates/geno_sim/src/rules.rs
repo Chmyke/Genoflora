@@ -145,7 +145,8 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     let room = (1.0 - s[HALF] / (p.r_div * p.max_half_length)).max(0.0);
     let eps = p.elong * (ca / (p.e_half + ca)) * (p.e_block / (p.e_block + ca)) * room * slowed;
     let shape = with_dir(&grow_along(&grow_even(s, even / pi[3]), &a, eps), a);
-    let pin = polarise(me, g, p, ca);
+    let mut pin = polarise(me, g, p, ca);
+    pin[3] = lit;
     // A cell stays young where auxin gathers (root tip), or where cytokinin gathers while auxin
     // is scarce (shoot tip); it matures elsewhere, and turns young again if they come back.
     let calls = (ca / (p.youth_half + ca) + ck_push).min(1.0);
@@ -354,7 +355,7 @@ mod tests {
             gravisense: 0.0,
             ..Params::default()
         };
-        assert_eq!(pumps_after(&numb, 1.0, &g, 500), [0.0; 4]);
+        assert_eq!(pumps_after(&numb, 1.0, &g, 500)[..3], [0.0; 3]);
         let p = Params::default();
         let q = pumps_after(&p, 1.0, &g, 1000);
         assert!((q[1] + p.gravisense).abs() < 0.01, "{q:?}");

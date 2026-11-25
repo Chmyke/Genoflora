@@ -12,7 +12,7 @@
 @group(0) @binding(9) var<storage, read> shape: array<Shape>;
 @group(0) @binding(10) var<storage, read> sshape: array<Shape>;
 @group(0) @binding(11) var<storage, read_write> shape_out: array<Shape>;
-// Pump polarity (xyz; w unused), read by cell id: neighbours are looked up unsorted.
+// Pump polarity (xyz; w: light received, display only), read by cell id: neighbours are looked up unsorted.
 @group(0) @binding(12) var<storage, read> pin: array<vec4<f32>>;
 @group(0) @binding(13) var<storage, read_write> pin_out: array<vec4<f32>>;
 @group(0) @binding(14) var<storage, read> youth: array<f32>;
@@ -113,7 +113,8 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     let len = sqrt(dot(n, n));
     var keep = 1.0;
     if (len > 1.0) { keep = 1.0 / len; }
-    pin_out[i] = vec4<f32>(n * keep, 0.0);
+    // w keeps the light received, for display only.
+    pin_out[i] = vec4<f32>(n * keep, lit);
     // Youth: toward what the auxin calls for (mirrors finish).
     let calls = min(ca / (P.youth_half + ca) + ck_push, 1.0);
     youth_out[i] = youth[i] + P.youth_rate * (calls - youth[i]);

@@ -86,6 +86,17 @@ pub struct GpuSim {
 /// Size of the uniform block: 44 four-byte fields.
 const PARAMS_BYTES: usize = 176;
 
+/// The current cells, as GPU buffers (layouts in `shaders/common.wgsl`). `state` starts with
+/// the live cell count.
+pub struct Drawn<'a> {
+    pub state: &'a Buffer,
+    pub pos: &'a Buffer,
+    pub shape: &'a Buffer,
+    pub hormones: &'a Buffer,
+    pub pin: &'a Buffer,
+    pub youth: &'a Buffer,
+}
+
 /// Uniform block of the shaders. Layout mirrors `Params` in `shaders/common.wgsl`.
 fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
     let f = |v: f32| v.to_le_bytes();
@@ -155,6 +166,12 @@ impl GpuSim {
             ..Default::default()
         }))
         .map_err(|e| fail("no GPU adapter", e))?;
+        Self::on_adapter(p, cells, &adapter)
+    }
+
+    /// Same as `new`, on an adapter chosen by the caller (a window picks one that can draw on
+    /// its surface). The device is then shared: see `device`, `queue` and `drawn`.
+    pub fn on_adapter(p: &Params, cells: &Cells, adapter: &wgpu::Adapter) -> Result<Self, EngineError> {
         let info = adapter.get_info();
         if adapter.limits().max_storage_buffers_per_shader_stage < STORAGE_BUFFERS {
             return Err(fail(
@@ -429,6 +446,34 @@ impl GpuSim {
         };
         sim.write_cells(cells, 0);
         Ok(sim)
+    }
+
+    /// The device the plant lives on, for a renderer that draws it in place.
+    pub fn device(&self) -> &wgpu::Device {
+        &self.device
+    }
+
+    pub fn queue(&self) -> &wgpu::Queue {
+        &self.queue
+    }
+
+    /// Most cells the plant can ever hold.
+    pub fn capacity(&self) -> usize {
+        self.capacity
+    }
+
+    /// Hands the queued steps to the GPU, then gives the buffers holding the cells as they will
+    /// be once those steps are done: what a renderer draws, with no read-back.
+    pub fn drawn(&mut self) -> Drawn<'_> {
+        self.submit();
+        Drawn {
+            state: &self.state,
+            pos: &self.pos[self.cur],
+            shape: &self.shape[self.cur],
+            hormones: &self.hh[self.cur],
+            pin: &self.pin[self.cur],
+            youth: &self.youth[self.cur],
+        }
     }
 
     /// Name and backend of the adapter in use.

@@ -9,4 +9,5 @@
 | Les trois essais : mesures et recommandation | `docs/Verdict des essais.md` |
 | GPU seul ou GPU + juge CPU, en graphique | `docs/Comparatif des architectures.svg` |
 | Images de ce qui a émergé | `docs/images/` |
+| Voir la plante pousser en 3D (fenêtre, captures) | `crates/geno_view`, mode d'emploi dans la Feuille de route |
 | Voir une plante cellule par cellule (visionneuse) | `tools/viewer.py`, mode d'emploi dans la Feuille de route |

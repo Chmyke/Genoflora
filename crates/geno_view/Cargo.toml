@@ -1,0 +1,17 @@
+[package]
+name = "geno_view"
+description = "3D view of Genoflora: draws the cells where they live, on the GPU. The simulation never depends on it."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+bytemuck = "1.25.2"
+geno_gpu = { path = "../geno_gpu" }
+geno_sim = { path = "../geno_sim" }
+pollster = "1.0.3"
+wgpu = "30.0.2"
+winit = "0.30.13"
+
+[lints]
+workspace = true

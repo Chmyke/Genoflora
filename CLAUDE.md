@@ -19,9 +19,12 @@ avertissement, tests). Tout contrôle neuf s'y rattache. `cargo` se lance depuis
 |---|---|---|
 | `geno_sim` | Juge CPU : cellules, règles écrites en clair, référence mono-thread, contrôles chiffrés | aucune |
 | `geno_gpu` | Moteur GPU (wgpu + WGSL) : c'est lui qui fait tourner la plante | `wgpu`, `pollster`, `bytemuck` |
+| `geno_view` | Vue 3D : dessine les cellules là où elles vivent, sur la carte (fenêtre, captures) | `wgpu`, `winit`, `pollster`, `bytemuck` |
 
-Le juge sert à vérifier, jamais à produire : il n'entre pas dans le produit final. Le rendu 3D
-viendra dans un crate séparé ; la simulation n'en dépendra jamais.
+Le juge sert à vérifier, jamais à produire : il n'entre pas dans le produit final. La simulation
+ne dépend jamais du rendu (`geno_view` lit les cellules, il ne les modifie pas). Le rendu se
+vérifie hors écran, par les chiffres (`geno_view/tests/offscreen.rs`) ; pour le voir sans
+fenêtre : `geno_view --capture image.png`.
 
 ## Règles du code
 
