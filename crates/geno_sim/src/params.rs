@@ -41,6 +41,16 @@ pub struct Params {
     /// Auxin concentration that halves the push of cytokinin (the two hormones oppose each
     /// other: what counts is their ratio).
     pub ck_block: f32,
+    /// Stretch gained per step by a cell holding just the right amount of auxin.
+    pub elong: f32,
+    /// Auxin concentration at which stretching reaches half its pace...
+    pub e_half: f32,
+    /// ...and the one above which stretching is held back by half.
+    pub e_block: f32,
+    /// Largest stretch `k` of a cell (its length over its width is then `k^3`).
+    pub stretch_max: f32,
+    /// How fast the long axis of a cell turns toward the line of the auxin flow through it.
+    pub align: f32,
     /// Divisions are evaluated every `divide_every` steps.
     pub divide_every: u32,
     /// Direction in which heavy things fall (unit vector). Part of the environment, not of the cell.
@@ -68,6 +78,12 @@ impl Default for Params {
             ck_decay: 0.001,
             ck_half: 1.0,
             ck_block: 0.1,
+            // Off in the default genome: cells stay round.
+            elong: 0.0,
+            e_half: 1.0,
+            e_block: 1.0e6,
+            stretch_max: 1.0,
+            align: 0.0,
             divide_every: 20,
             gravity: [0.0, -1.0, 0.0],
         }

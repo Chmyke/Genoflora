@@ -27,16 +27,14 @@ impl Engine for Reference {
     fn step(&mut self) {
         let n = self.cur.count;
         for i in 0..n {
-            let (pi, hi) = (self.cur.pr[i], self.cur.h[i]);
+            let me = self.cur.get(i);
             let mut g = Gathered::default();
             for j in 0..n {
                 if j != i {
-                    interact(&pi, hi, &self.cur.pr[j], self.cur.h[j], &self.p, &mut g);
+                    interact(&me, &self.cur.get(j), &self.p, &mut g);
                 }
             }
-            let (pr, h) = finish(&pi, hi, &g, &self.p);
-            self.next.pr[i] = pr;
-            self.next.h[i] = h;
+            self.next.set(i, finish(&me, &g, &self.p));
         }
         self.next.count = n;
         std::mem::swap(&mut self.cur, &mut self.next);

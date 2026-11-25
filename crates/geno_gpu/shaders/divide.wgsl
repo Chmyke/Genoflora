@@ -6,6 +6,7 @@
 @group(0) @binding(4) var<storage, read_write> flags: array<u32>;
 @group(0) @binding(5) var<storage, read> rank: array<u32>;
 @group(0) @binding(6) var<storage, read_write> indirect: array<u32>;
+@group(0) @binding(7) var<storage, read_write> shape: array<vec4<f32>>;
 
 fn mix(v: u32) -> u32 {
     var x = v;
@@ -51,11 +52,20 @@ fn apply(@builtin(global_invocation_id) g: vec3<u32>) {
     let j = S.count + rank[i];
     if (j >= P.capacity) { return; }
     let m = pos[i];
+    let s = shape[i];
+    // Random direction, stretched along the long axis as much as the cell is stretched.
+    let rnd = axis(i, S.epoch);
+    let w = (s.w * s.w * s.w - 1.0) * dot(rnd, s.xyz);
+    let dir = rnd + w * s.xyz;
+    let inv = 1.0 / sqrt(max(dot(dir, dir), 1e-12));
     let r = m.w * P.inv_cbrt2;
-    let o = axis(i, S.epoch) * (0.5 * r);
+    let o = dir * inv * (0.5 * r);
     let h = hh[i] * 0.5;
+    let daughter = vec4<f32>(s.xyz, max(s.w * P.inv_cbrt2, 1.0));
     pos[i] = vec4<f32>(m.xyz - o, r);
     pos[j] = vec4<f32>(m.xyz + o, r);
+    shape[i] = daughter;
+    shape[j] = daughter;
     hh[i] = h;
     hh[j] = h;
 }

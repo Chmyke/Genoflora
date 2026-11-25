@@ -15,9 +15,11 @@ pub struct Grid {
 
 impl Grid {
     pub fn for_capacity(capacity: usize, p: &Params) -> Self {
-        // A grid cell must be wider than the longest interaction: reach * 2 * r_div.
-        let cell = (2.5 * p.r_div).max(p.reach * 2.0 * p.r_div * 1.01);
-        let radius = 1.6 * (capacity as f32).cbrt() * p.r_div;
+        // A grid cell must be wider than the longest interaction: reach times two half-lengths,
+        // and a cell is at most r_div * stretch_max^2 long from its centre.
+        let longest = p.r_div * p.stretch_max * p.stretch_max;
+        let cell = (2.5 * p.r_div).max(p.reach * 2.0 * longest * 1.01);
+        let radius = 1.6 * (capacity as f32).cbrt() * longest;
         let g1 = (2.0 * radius / cell).ceil() as u32 + 2;
         Self {
             g1,

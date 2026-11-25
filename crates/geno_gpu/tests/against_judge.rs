@@ -7,7 +7,15 @@ use geno_sim::{Engine, EngineError, Params};
 
 /// Runs `check` on every adapter. The software adapter is mandatory; a missing graphics card
 /// only skips the hardware run.
+///
+/// One test at a time: tests run in parallel threads, and twice (2026-11-25) a parallel run spun
+/// forever on one core, outside any GPU wait (the 2-minute wait limit never fired). Creating
+/// several devices at once is the likely trigger; serial runs never hung.
 fn on_each_adapter(check: impl Fn(Adapter) -> Result<(), EngineError>) -> Result<(), EngineError> {
+    static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _turn = ONE_AT_A_TIME
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     check(Adapter::Software)?;
     let p = Params::default();
     match GpuSim::new(&p, &lattice(1, 1, &p), Adapter::Hardware) {
@@ -126,10 +134,40 @@ fn a_seed_germinates_like_on_the_judge() -> Result<(), EngineError> {
             ck_production: 0.0001,
             ..Params::default()
         };
-        let start = geno_sim::Cells::seed(256, p.r_div, 1.0);
+        let start = geno_sim::Cells::seed(&p, 256, 1.0);
         let gap = gap_to_judge(&mut GpuSim::new(&p, &start, adapter)?, &p, &start, 4000)?;
         assert_eq!(gap.counts.0, gap.counts.1, "{adapter:?} {gap:?}");
         assert!(gap.shape <= 1e-2 && gap.mass <= 1e-3, "{adapter:?} {gap:?}");
+        Ok(())
+    })
+}
+
+/// A genome whose cells stretch and turn, so the shaders are compared on the cell shape too.
+/// Stretching adds work per step, so rounding gaps grow faster: the exact run is shorter.
+fn stretching() -> Params {
+    Params {
+        half_sat: 10.0,
+        polar: 0.1,
+        elong: 0.002,
+        e_half: 0.2,
+        e_block: 1.0,
+        stretch_max: 1.5,
+        align: 0.02,
+        ..Params::default()
+    }
+}
+
+#[test]
+fn stretching_cells_match_the_judge_cell_by_cell_on_a_short_run() -> Result<(), EngineError> {
+    on_each_adapter(|adapter| {
+        let p = stretching();
+        let start = lattice(500, 4096, &p);
+        let mut gpu = GpuSim::new(&p, &start, adapter)?;
+        let gap = gap_to_judge(&mut gpu, &p, &start, 120)?;
+        assert_eq!(gap.counts.0, gap.counts.1, "{adapter:?} {gap:?}");
+        assert!(gap.position <= 1e-3 && gap.mass <= 1e-4, "{adapter:?} {gap:?}");
+        let stretched = gpu.snapshot()?.shapes().iter().filter(|s| s[3] > 1.05).count();
+        assert!(stretched > 50, "{adapter:?} only {stretched} stretched cells");
         Ok(())
     })
 }

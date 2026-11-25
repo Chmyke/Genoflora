@@ -29,6 +29,8 @@ pub fn lattice(n: usize, capacity: usize, p: &Params) -> Cells {
     for (i, &(_, q)) in pts.iter().take(n).enumerate() {
         let id = i as u32;
         let jitter = |c: u32| (unit(hash(p.seed, id, c)) * 2.0 - 1.0) * NOISE;
+        let a = crate::hash::axis(p.seed, id, 7);
+        cells.shape[i] = [a[0], a[1], a[2], 1.0];
         cells.pr[i] = [
             q[0] as f32 * SPACING + jitter(0),
             q[1] as f32 * SPACING + jitter(1),
@@ -176,6 +178,10 @@ pub struct Lie {
     pub back: f64,
     /// Same two means for cytokinin: (front, back).
     pub cytokinin: (f64, f64),
+    /// Mean of |long axis . direction| over the cells: 0.5 for random axes, 1 if all line up.
+    pub alignment: f64,
+    /// Mean length over width of the cells (1 for spheres).
+    pub stretch: f64,
     /// Furthest reach of the tissue along the direction and against it, from the origin
     /// (where a seed starts).
     pub reach: (f64, f64),
@@ -208,6 +214,13 @@ pub fn lie(c: &Cells, axis: [f32; 3]) -> Lie {
         front: mean(front, false),
         back: mean(back, false),
         cytokinin: (mean(front, true), mean(back, true)),
+        alignment: c
+            .shapes()
+            .iter()
+            .map(|s| (0..3).map(|k| f64::from(s[k]) * axis[k]).sum::<f64>().abs())
+            .sum::<f64>()
+            / n,
+        stretch: c.shapes().iter().map(|s| f64::from(s[3]).powi(3)).sum::<f64>() / n,
         reach: (
             heights.last().map_or(0.0, |v| v.0),
             -heights.first().map_or(0.0, |v| v.0),
@@ -278,7 +291,7 @@ mod tests {
     }
 
     fn germinate(p: &Params) -> Result<Cells, EngineError> {
-        let mut e = Reference::new(p, &Cells::seed(1024, p.r_div, 1.0));
+        let mut e = Reference::new(p, &Cells::seed(p, 1024, 1.0));
         run(&mut e, 24_000, Some(p.divide_every));
         e.snapshot()
     }
@@ -316,10 +329,57 @@ mod tests {
             half_sat: 1.0,
             ..Params::default()
         };
-        let mut e = Reference::new(&p, &Cells::seed(1024, p.r_div, 1.0));
+        let mut e = Reference::new(&p, &Cells::seed(&p, 1024, 1.0));
         run(&mut e, 4000, Some(p.divide_every));
         let l = lie(&e.snapshot()?, p.gravity);
         assert!((0.7..=1.4).contains(&l.elongation), "{l:?}");
+        Ok(())
+    }
+
+    /// A genome whose cells stretch where auxin is moderate and turn toward the auxin flow.
+    fn stretching() -> Params {
+        Params {
+            elong: 0.002,
+            e_half: 0.2,
+            e_block: 1.0,
+            stretch_max: 1.5,
+            align: 0.02,
+            ..frugal()
+        }
+    }
+
+    // Nothing says "line up vertically": each cell only turns toward the auxin that flows through
+    // it. The control genome is identical except that axes never turn, so every cell keeps the
+    // seed cell's random axis. Several seeds and a tilted gravity show the axes follow the flow.
+    #[test]
+    fn stretched_cells_line_up_with_the_auxin_flow() -> Result<(), EngineError> {
+        let runs = [
+            (1, [0.0, -1.0, 0.0]),
+            (2, [0.0, -1.0, 0.0]),
+            (3, [0.0, -1.0, 0.0]),
+            (1, [0.6, 0.0, 0.8]),
+        ];
+        let (mut turning, mut control) = (0.0, 0.0);
+        for (seed, gravity) in runs {
+            let p = Params {
+                seed,
+                gravity,
+                ..stretching()
+            };
+            let l = lie(&germinate(&p)?, p.gravity);
+            let c = lie(&germinate(&Params { align: 0.0, ..p })?, p.gravity);
+            eprintln!(
+                "seed {seed} {gravity:?}: turning {:.2}, control {:.2}, {l:?}",
+                l.alignment, c.alignment
+            );
+            assert!(l.stretch >= 2.0 && l.alignment >= 0.58, "{l:?}");
+            turning += l.alignment / runs.len() as f64;
+            control += c.alignment / runs.len() as f64;
+        }
+        assert!(
+            turning >= control + 0.1,
+            "turning {turning:.2}, control {control:.2}"
+        );
         Ok(())
     }
 }

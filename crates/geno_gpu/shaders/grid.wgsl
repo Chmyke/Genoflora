@@ -8,6 +8,8 @@
 @group(0) @binding(6) var<storage, read_write> sidx: array<u32>;
 @group(0) @binding(7) var<storage, read_write> spos: array<vec4<f32>>;
 @group(0) @binding(8) var<storage, read_write> shid: array<Tagged>;
+@group(0) @binding(9) var<storage, read> shape: array<vec4<f32>>;
+@group(0) @binding(10) var<storage, read_write> sshape: array<vec4<f32>>;
 
 @compute @workgroup_size(256)
 fn count_cells(@builtin(global_invocation_id) g: vec3<u32>) {
@@ -47,5 +49,6 @@ fn sort_cells(@builtin(global_invocation_id) g: vec3<u32>) {
         let i = sidx[k];
         spos[k] = pos[i];
         shid[k] = Tagged(hh[i], i, 0u);
+        sshape[k] = shape[i];
     }
 }

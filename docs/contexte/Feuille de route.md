@@ -97,11 +97,32 @@ Raison probable : dans une vraie plante la cytokinine monte par la sève brute, 
 l'évaporation des feuilles ; ici elle ne fait que diffuser et reste près de la racine. La capacité
 reste dans le code, éteinte dans le génome par défaut (`ck_production = 0`).
 
-Pistes pour la tige, à valider avant de coder : des cellules qui s'allongent (la courbure vers le
-haut d'une vraie tige vient du flanc bas qui s'allonge plus) ; un milieu (sol en bas, air en
-haut) ; la lumière.
+Cellules allongées (2026-11-25, piste A1 validée par Mickaël, la piste A2 « sol et air » viendra
+après, pas en même temps). Une cellule est un ellipsoïde de volume constant : elle s'étire selon
+l'auxine qu'elle contient (un peu l'aide, trop la freine), son grand axe tourne vers la ligne du
+flux d'auxine qui la traverse, et elle se divise plutôt en travers de sa longueur. Rien n'impose
+de direction.
 
-Limites : cellules encore sphériques (elles ne s'allongent pas), pas de sol, pas de lumière.
+Mesuré (`docs/images/Cellules allongées*.png`) :
+
+- Les cellules s'étirent (trois fois plus longues que larges) et s'alignent sur le flux : 0,90
+  d'alignement avec la verticale sur trois graines, contre 0,26 à 0,55 pour un témoin dont les
+  axes ne tournent pas (10 000 cellules sur GPU). Trop de rotation dégrade (0,77).
+- La racine devient plus fine et plus longue (allongement 4,9 à 5,2 contre 2,7 à 3,6).
+- Vus de près, des tissus de cellules longues et parallèles, comme dans une vraie tige.
+- Non mesuré, à suivre : de petits foyers d'auxine apparaissent sur les flancs.
+
+Toujours rien ne monte (0 à 5 % des cellules au-dessus de la graine). Leçon : sans sol, la graine
+n'est accrochée à rien. Les cellules ne font que se pousser entre elles, donc « monter » n'a pas
+de sens physique : la colonne s'étire autour de son propre centre, et seul l'endroit où les
+cellules se divisent décide de quel côté de la graine elle s'étend. Le sol (piste A2) n'est donc
+pas un décor : c'est ce qui donne un point d'appui pour qu'une partie puisse pousser vers le haut.
+
+Biais corrigé en route : l'axe de la cellule graine était tiré une fois pour toutes et toutes les
+cellules en héritaient. Il est maintenant tiré de la graine numérique.
+
+Limites : pas de sol ni de lumière ; le juge compare toutes les paires (petits tissus seulement) ;
+la grille GPU grossit avec l'étirement maximal, donc le calcul ralentit.
 
 ## Ordre proposé des facteurs d'environnement (non validé)
 

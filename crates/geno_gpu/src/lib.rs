@@ -12,6 +12,8 @@ pub use grid::Grid;
 use wgpu::{Buffer, BufferUsages as U, ComputePipeline};
 
 const COMMON: &str = include_str!("../shaders/common.wgsl");
+/// Storage buffers bound by the busiest shader (`step`).
+const STORAGE_BUFFERS: u32 = 11;
 /// Queued steps are handed to the GPU in batches of this size, so the command list stays short.
 const SUBMIT_EVERY: u32 = 16;
 /// Longest wait for the GPU before giving up: a stuck device must fail loudly, never hang.
@@ -48,10 +50,12 @@ pub struct GpuSim {
     grid_cells: usize,
     pos: [Buffer; 2],
     hh: [Buffer; 2],
+    shape: [Buffer; 2],
     state: Buffer,
     indirect: Buffer,
     stage_pos: Buffer,
     stage_hh: Buffer,
+    stage_shape: Buffer,
     stage_state: Buffer,
     cur: usize,
     pending: Option<wgpu::CommandEncoder>,
@@ -105,7 +109,11 @@ fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
         f(p.ck_decay),
         f(p.ck_half),
         f(p.ck_block),
-        u(0),
+        f(p.align),
+        f(p.elong),
+        f(p.e_half),
+        f(p.e_block),
+        f(p.stretch_max),
         u(0),
         u(0),
     ]
@@ -129,6 +137,12 @@ impl GpuSim {
         }))
         .map_err(|e| fail("no GPU adapter", e))?;
         let info = adapter.get_info();
+        if adapter.limits().max_storage_buffers_per_shader_stage < STORAGE_BUFFERS {
+            return Err(fail(
+                "GPU too limited",
+                format!("{STORAGE_BUFFERS} storage buffers per shader needed"),
+            ));
+        }
         let machine = format!("{} ({:?})", info.name, info.backend);
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             required_limits: adapter.limits(),
@@ -153,15 +167,21 @@ impl GpuSim {
             buffer("pos1", capacity * 16, data),
         ];
         let hh = [buffer("h0", capacity * 8, data), buffer("h1", capacity * 8, data)];
+        let shape = [
+            buffer("shape0", capacity * 16, data),
+            buffer("shape1", capacity * 16, data),
+        ];
         let state = buffer("state", 16, data);
         let indirect = buffer("indirect", 16, U::STORAGE | U::INDIRECT | U::COPY_DST);
-        let params = buffer("params", 112, U::UNIFORM | U::COPY_DST);
+        let params = buffer("params", 128, U::UNIFORM | U::COPY_DST);
         let stage = U::MAP_READ | U::COPY_DST;
         let stage_pos = buffer("stage pos", capacity * 16, stage);
         let stage_hh = buffer("stage h", capacity * 8, stage);
+        let stage_shape = buffer("stage shape", capacity * 16, stage);
         let stage_state = buffer("stage state", 16, stage);
         let sidx = buffer("sorted idx", capacity * 4, U::STORAGE);
         let spos = buffer("sorted pos", capacity * 16, U::STORAGE);
+        let sshape = buffer("sorted shape", capacity * 16, U::STORAGE);
         let shid = buffer("sorted h+id", capacity * 16, U::STORAGE);
         // Grid scan: one extra entry so `offsets[cell + 1]` exists for the last cell.
         let n0 = round_up(grid_cells + 1, 256);
@@ -275,6 +295,8 @@ impl GpuSim {
                     (6, &sidx),
                     (7, &spos),
                     (8, &shid),
+                    (9, &shape[c]),
+                    (10, &sshape),
                 ],
             )
         });
@@ -291,6 +313,9 @@ impl GpuSim {
                     (6, &offsets),
                     (7, &pos[1 - c]),
                     (8, &hh[1 - c]),
+                    (9, &shape[c]),
+                    (10, &sshape),
+                    (11, &shape[1 - c]),
                 ],
             )
         });
@@ -305,6 +330,7 @@ impl GpuSim {
                     (3, &hh[c]),
                     (4, &flags),
                     (5, &rank),
+                    (7, &shape[c]),
                 ],
             )
         });
@@ -322,10 +348,12 @@ impl GpuSim {
             grid_cells,
             pos,
             hh,
+            shape,
             state,
             indirect,
             stage_pos,
             stage_hh,
+            stage_shape,
             stage_state,
             cur: 0,
             pending: None,
@@ -439,10 +467,12 @@ impl GpuSim {
         let count = count.min(self.capacity);
         let pr = self.read(&self.pos[self.cur], &self.stage_pos, count * 16)?;
         let h = self.read(&self.hh[self.cur], &self.stage_hh, count * 8)?;
+        let shape = self.read(&self.shape[self.cur], &self.stage_shape, count * 16)?;
         let mut cells = Cells::empty(self.capacity);
         cells.count = count;
         cells.pr[..count].copy_from_slice(bytemuck::cast_slice(&pr));
         cells.h[..count].copy_from_slice(bytemuck::cast_slice(&h));
+        cells.shape[..count].copy_from_slice(bytemuck::cast_slice(&shape));
         Ok(cells)
     }
 
@@ -454,6 +484,8 @@ impl GpuSim {
             .write_buffer(&self.pos[self.cur], 0, bytemuck::cast_slice(cells.alive()));
         self.queue
             .write_buffer(&self.hh[self.cur], 0, bytemuck::cast_slice(cells.hormone()));
+        self.queue
+            .write_buffer(&self.shape[self.cur], 0, bytemuck::cast_slice(cells.shapes()));
         self.queue
             .write_buffer(&self.state, 0, bytemuck::cast_slice(&[n as u32, epoch, 0, 0]));
         self.queue.write_buffer(

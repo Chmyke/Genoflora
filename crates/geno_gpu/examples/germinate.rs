@@ -1,4 +1,4 @@
-//! Probe: grows one seed cell on the GPU and writes snapshots as CSV (x,y,z,r,auxin,cytokinin per line,
+//! Probe: grows one seed cell on the GPU and writes snapshots as CSV (x,y,z,r,auxin,cytokinin,axis xyz,stretch per line,
 //! one file per snapshot) so that what emerges can be measured and drawn.
 //! Usage: cargo run --release -p geno_gpu --example germinate -- <out dir> <steps> <snapshots>
 //!        [polar=0.05] [half_sat=4] [production=..] [decay=..] [diffusion=..] [max=50000]
@@ -29,20 +29,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "ck_decay" => p.ck_decay = value.parse()?,
             "ck_half" => p.ck_half = value.parse()?,
             "ck_block" => p.ck_block = value.parse()?,
+            "elong" => p.elong = value.parse()?,
+            "e_half" => p.e_half = value.parse()?,
+            "e_block" => p.e_block = value.parse()?,
+            "stretch_max" => p.stretch_max = value.parse()?,
+            "align" => p.align = value.parse()?,
+            "seed" => p.seed = value.parse()?,
             "max" => max = value.parse()?,
             _ => return Err(format!("unknown parameter {key}").into()),
         }
     }
-    let mut sim = GpuSim::new(&p, &Cells::seed(1 << 17, p.r_div, 1.0), Adapter::Hardware)?;
+    let mut sim = GpuSim::new(&p, &Cells::seed(&p, 1 << 17, 1.0), Adapter::Hardware)?;
     println!("{}", sim.machine());
     std::fs::create_dir_all(dir)?;
     for shot in 1..=shots {
         run(&mut sim, steps / shots, Some(p.divide_every));
         let cells = sim.snapshot()?;
         let mut text = String::new();
-        for (q, h) in cells.alive().iter().zip(cells.hormone()) {
-            writeln!(text, "{},{},{},{},{},{}", q[0], q[1], q[2], q[3], h[0], h[1])
-                .map_err(|e| EngineError(e.to_string()))?;
+        for (i, (q, h)) in cells.alive().iter().zip(cells.hormone()).enumerate() {
+            let s = cells.shape[i];
+            writeln!(
+                text,
+                "{},{},{},{},{},{},{},{},{},{}",
+                q[0], q[1], q[2], q[3], h[0], h[1], s[0], s[1], s[2], s[3]
+            )
+            .map_err(|e| EngineError(e.to_string()))?;
         }
         std::fs::write(format!("{dir}/{shot:04}.csv"), text)?;
         println!("step {:>6}: {} cells", shot * (steps / shots), cells.count);
