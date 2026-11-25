@@ -54,6 +54,13 @@
   GPU (`geno_gpu`). `geno_sim` est un juge CPU réservé à la vérification : chaque règle y naît,
   les tests comparent le moteur GPU au juge. Le juge est optionnel et n'entre pas dans le produit
   final. Détail : `docs/contexte/Parallélisme.md`.
+- Principe d'émergence (2026-11-25, précisé par Mickaël) : la nature est le juge, pas le plan. Le
+  point de départ est simple et en partie aléatoire ; les chiffres du réel (137,5° entre deux
+  feuilles, période de circumnutation) ne sont jamais des objectifs codés ni des réglages de
+  départ, seulement des mesures de vérification faites après coup.
+- Ordre des jalons (2026-11-25) : la germination d'abord (une graine devient une pointe, la tige
+  monte, la racine descend), les feuilles ensuite, sans angle imposé. L'ancien jalon « phyllotaxie
+  à 137,5° ± 5° » est abandonné comme objectif ; l'angle reste une mesure de vérification.
 
 ## Ouvert
 
@@ -69,8 +76,9 @@
 Le socle est en place (2026-11-25) : juge CPU et moteur GPU font pousser le même tissu de test
 (sphères, une hormone, division), comparés dans `check.ps1`.
 
-Jalon 2 de la note : phyllotaxie sur une surface, angle moyen 137,5° ± 5°, sans spirale codée.
-À trancher avant : les équations du premier modèle d'auxine (voir Ouvert).
+Jalon suivant : la germination. Critères mesurés, sans chiffre du réel imposé : la tige monte,
+la racine descend, la croissance se concentre sous la pointe. Règles locales à valider avant de
+coder.
 
 ## Ordre proposé des facteurs d'environnement (non validé)
 

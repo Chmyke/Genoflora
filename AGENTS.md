@@ -34,5 +34,9 @@ viendra dans un crate séparé ; la simulation n'en dépendra jamais.
 - `unsafe` interdit, pas d'`unwrap` en logique (lints du workspace).
 - Aucun comportement visible n'est codé (spirale des feuilles, circumnutation, tropismes) : il
   émerge des règles locales des cellules ; les tests mesurent le résultat, jamais la règle.
+- La nature sert à vérifier, jamais à construire : on code des causes locales (ce qu'une cellule
+  sent et fait), jamais un résultat. Aucun chiffre observé dans la nature (angle, période, rapport)
+  n'entre dans une règle ni dans le génome de départ ; il sert seulement, après coup, à mesurer si
+  ce qui a émergé ressemble au réel.
 - Ne pas figer le modèle sur « seule la pointe vit » : des cellules anciennes peuvent grandir à leur
   rythme (épaississement du tronc).
