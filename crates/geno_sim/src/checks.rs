@@ -30,13 +30,13 @@ pub fn lattice(n: usize, capacity: usize, p: &Params) -> Cells {
         let id = i as u32;
         let jitter = |c: u32| (unit(hash(p.seed, id, c)) * 2.0 - 1.0) * NOISE;
         let a = crate::hash::axis(p.seed, id, 7);
-        cells.shape[i] = [a[0], a[1], a[2], 1.0];
         cells.pr[i] = [
             q[0] as f32 * SPACING + jitter(0),
             q[1] as f32 * SPACING + jitter(1),
             q[2] as f32 * SPACING + jitter(2),
             p.r_div * (0.8 + 0.2 * unit(hash(p.seed, id, 3))),
         ];
+        cells.shape[i] = crate::shape::sphere(cells.pr[i][3], a);
         cells.h[i] = [unit(hash(p.seed, id, 4)), unit(hash(p.seed, id, 5))];
     }
     cells
@@ -179,12 +179,50 @@ pub struct Lie {
     /// Same two means for cytokinin: (front, back).
     pub cytokinin: (f64, f64),
     /// Mean of |long axis . direction| over the cells: 0.5 for random axes, 1 if all line up.
+    /// Round cells (length below 1.05 times the width) count as random.
     pub alignment: f64,
     /// Mean length over width of the cells (1 for spheres).
     pub stretch: f64,
     /// Furthest reach of the tissue along the direction and against it, from the origin
     /// (where a seed starts).
     pub reach: (f64, f64),
+}
+
+/// Length over width of a cell.
+pub fn length_over_width(s: &crate::shape::Shape) -> f64 {
+    let (low, high) = crate::shape::eigen_extremes(s);
+    (f64::from(high) / f64::from(low).max(1e-12)).sqrt()
+}
+
+/// Unit long axis of a cell, or `None` for a round cell.
+pub fn long_axis(s: &crate::shape::Shape) -> Option<[f64; 3]> {
+    if length_over_width(s) < 1.05 {
+        return None;
+    }
+    let low = f64::from(crate::shape::eigen_extremes(s).0);
+    let m = [
+        [f64::from(s[0]) - low, f64::from(s[3]), f64::from(s[4])],
+        [f64::from(s[3]), f64::from(s[1]) - low, f64::from(s[5])],
+        [f64::from(s[4]), f64::from(s[5]), f64::from(s[2]) - low],
+    ];
+    // The eigenvector is orthogonal to every row of N - low I: take the best cross product.
+    let cross = |a: &[f64; 3], b: &[f64; 3]| {
+        [
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0],
+        ]
+    };
+    let v = [cross(&m[0], &m[1]), cross(&m[0], &m[2]), cross(&m[1], &m[2])]
+        .into_iter()
+        .max_by(|a, b| {
+            a.iter()
+                .map(|x| x * x)
+                .sum::<f64>()
+                .total_cmp(&b.iter().map(|x| x * x).sum::<f64>())
+        })?;
+    let len = v.iter().map(|x| x * x).sum::<f64>().sqrt();
+    (len > 0.0).then(|| v.map(|x| x / len))
 }
 
 /// Measures the shape and the hormone of the tissue along `axis`. Needs at least ten cells.
@@ -217,10 +255,13 @@ pub fn lie(c: &Cells, axis: [f32; 3]) -> Lie {
         alignment: c
             .shapes()
             .iter()
-            .map(|s| (0..3).map(|k| f64::from(s[k]) * axis[k]).sum::<f64>().abs())
+            .map(|s| match long_axis(s) {
+                Some(l) => (0..3).map(|k| l[k] * axis[k]).sum::<f64>().abs(),
+                None => 0.5,
+            })
             .sum::<f64>()
             / n,
-        stretch: c.shapes().iter().map(|s| f64::from(s[3]).powi(3)).sum::<f64>() / n,
+        stretch: c.shapes().iter().map(length_over_width).sum::<f64>() / n,
         reach: (
             heights.last().map_or(0.0, |v| v.0),
             -heights.first().map_or(0.0, |v| v.0),
@@ -253,7 +294,7 @@ mod tests {
     #[test]
     fn division_conserves_volume_and_hormone() -> Result<(), EngineError> {
         let p = Params::default();
-        let d = division(&mut judge(&p, 300, 1024), p.divide_every)?;
+        let d = division(&mut judge(&p, 300, 1024), 20)?;
         assert!(d.cells_after > d.cells_before, "{d:?}");
         assert!(d.volume <= 1e-5 && d.mass <= 1e-5, "{d:?}");
         Ok(())
@@ -291,8 +332,12 @@ mod tests {
     }
 
     fn germinate(p: &Params) -> Result<Cells, EngineError> {
-        let mut e = Reference::new(p, &Cells::seed(p, 1024, 1.0));
-        run(&mut e, 24_000, Some(p.divide_every));
+        grow_seed(p, 1024, 24_000)
+    }
+
+    fn grow_seed(p: &Params, capacity: usize, steps: u32) -> Result<Cells, EngineError> {
+        let mut e = Reference::new(p, &Cells::seed(p, capacity, 1.0));
+        run(&mut e, steps, Some(p.divide_every));
         e.snapshot()
     }
 
@@ -342,8 +387,8 @@ mod tests {
             elong: 0.002,
             e_half: 0.2,
             e_block: 1.0,
-            stretch_max: 1.5,
-            align: 0.02,
+            max_half_length: 2.25,
+            align: 10.0,
             ..frugal()
         }
     }
@@ -366,8 +411,9 @@ mod tests {
                 gravity,
                 ..stretching()
             };
-            let l = lie(&germinate(&p)?, p.gravity);
-            let c = lie(&germinate(&Params { align: 0.0, ..p })?, p.gravity);
+            // Stretching cells grow fast: 12000 steps keep the judge quick.
+            let l = lie(&grow_seed(&p, 1024, 12_000)?, p.gravity);
+            let c = lie(&grow_seed(&Params { align: 0.0, ..p }, 1024, 12_000)?, p.gravity);
             eprintln!(
                 "seed {seed} {gravity:?}: turning {:.2}, control {:.2}, {l:?}",
                 l.alignment, c.alignment
@@ -376,6 +422,8 @@ mod tests {
             turning += l.alignment / runs.len() as f64;
             control += c.alignment / runs.len() as f64;
         }
+        // Measured 2026-11-25: 0.62 to 0.70 against 0.36 to 0.54 here (a thousand cells); 0.83 to
+        // 0.86 against 0.53 at sixteen thousand cells on the GPU (the bigger the tissue, the clearer).
         assert!(
             turning >= control + 0.1,
             "turning {turning:.2}, control {control:.2}"

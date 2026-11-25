@@ -1,5 +1,10 @@
 //! Parameters of the cell rules. Lengths are in units of `r_div`; rates are per step.
 
+/// A cell divides by length once its half-length passes the longest by this share. For a round
+/// cell the longest equals the dividing radius: without the margin, the last rounding digit of
+/// the half-length would decide, differently on the judge and on the GPU.
+pub const LENGTH_MARGIN: f32 = 1.001;
+
 /// Radius factor of a daughter cell: volume is split evenly, so `r / cbrt(2)`.
 pub const INV_CBRT2: f32 = 0.793_700_5;
 
@@ -20,7 +25,8 @@ pub struct Params {
     pub mob_adh: f32,
     /// Adhesion and diffusion range, as a factor of the sum of the two radii.
     pub reach: f32,
-    /// Auxin exchanged per step with each neighbour, per unit of difference.
+    /// Share of the auxin gap with each neighbour closed per step (the gap is in concentration).
+    /// Stable while it stays well below one over the number of neighbours.
     pub diffusion: f32,
     /// Share of its hormone a cell hands, per step, to a neighbour lying straight below it
     /// (polar transport: the heavy grains of the cell settle on its lower side and point the way).
@@ -31,8 +37,8 @@ pub struct Params {
     pub decay: f32,
     /// Cytokinin a cell makes per step, per unit of auxin it holds.
     pub ck_production: f32,
-    /// Cytokinin exchanged per step with each neighbour, per unit of difference. It has no
-    /// preferred direction.
+    /// Same as `diffusion`, for cytokinin.
+    /// It has no preferred direction.
     pub ck_diffusion: f32,
     /// Fraction of cytokinin lost per step.
     pub ck_decay: f32,
@@ -41,17 +47,20 @@ pub struct Params {
     /// Auxin concentration that halves the push of cytokinin (the two hormones oppose each
     /// other: what counts is their ratio).
     pub ck_block: f32,
-    /// Stretch gained per step by a cell holding just the right amount of auxin.
+    /// Relative growth per step along the growth direction, for a cell holding just the right
+    /// amount of auxin (this growth adds volume, like water taken up).
     pub elong: f32,
-    /// Auxin concentration at which stretching reaches half its pace...
+    /// Auxin concentration at which that growth reaches half its pace...
     pub e_half: f32,
-    /// ...and the one above which stretching is held back by half.
+    /// ...and the one above which it is held back by half.
     pub e_block: f32,
-    /// Largest stretch `k` of a cell (its length over its width is then `k^3`).
-    pub stretch_max: f32,
-    /// How fast the long axis of a cell turns toward the line of the auxin flow through it.
+    /// Longest half-length of a cell, in units of `r_div`: a cell that reaches it divides.
+    pub max_half_length: f32,
+    /// How fast the growth direction of a cell turns toward the line of the auxin flow through it,
+    /// per unit of flow (a weak flow turns it little).
     pub align: f32,
-    /// Divisions are evaluated every `divide_every` steps.
+    /// Divisions are evaluated every `divide_every` steps (1: each cell divides as soon as it is
+    /// ready, which is what real cells do).
     pub divide_every: u32,
     /// Direction in which heavy things fall (unit vector). Part of the environment, not of the cell.
     pub gravity: [f32; 3],
@@ -82,9 +91,9 @@ impl Default for Params {
             elong: 0.0,
             e_half: 1.0,
             e_block: 1.0e6,
-            stretch_max: 1.0,
+            max_half_length: 1.0,
             align: 0.0,
-            divide_every: 20,
+            divide_every: 1,
             gravity: [0.0, -1.0, 0.0],
         }
     }

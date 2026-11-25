@@ -14,6 +14,7 @@ pub mod hash;
 pub mod params;
 pub mod reference;
 pub mod rules;
+pub mod shape;
 
 pub use cells::Cells;
 pub use engine::{Engine, EngineError};

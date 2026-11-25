@@ -8,8 +8,8 @@
 @group(0) @binding(6) var<storage, read_write> sidx: array<u32>;
 @group(0) @binding(7) var<storage, read_write> spos: array<vec4<f32>>;
 @group(0) @binding(8) var<storage, read_write> shid: array<Tagged>;
-@group(0) @binding(9) var<storage, read> shape: array<vec4<f32>>;
-@group(0) @binding(10) var<storage, read_write> sshape: array<vec4<f32>>;
+@group(0) @binding(9) var<storage, read> shape: array<Shape>;
+@group(0) @binding(10) var<storage, read_write> sshape: array<Shape>;
 
 @compute @workgroup_size(256)
 fn count_cells(@builtin(global_invocation_id) g: vec3<u32>) {

@@ -113,7 +113,7 @@ fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
         f(p.elong),
         f(p.e_half),
         f(p.e_block),
-        f(p.stretch_max),
+        f(p.max_half_length),
         u(0),
         u(0),
     ]
@@ -168,8 +168,8 @@ impl GpuSim {
         ];
         let hh = [buffer("h0", capacity * 8, data), buffer("h1", capacity * 8, data)];
         let shape = [
-            buffer("shape0", capacity * 16, data),
-            buffer("shape1", capacity * 16, data),
+            buffer("shape0", capacity * 48, data),
+            buffer("shape1", capacity * 48, data),
         ];
         let state = buffer("state", 16, data);
         let indirect = buffer("indirect", 16, U::STORAGE | U::INDIRECT | U::COPY_DST);
@@ -177,11 +177,11 @@ impl GpuSim {
         let stage = U::MAP_READ | U::COPY_DST;
         let stage_pos = buffer("stage pos", capacity * 16, stage);
         let stage_hh = buffer("stage h", capacity * 8, stage);
-        let stage_shape = buffer("stage shape", capacity * 16, stage);
+        let stage_shape = buffer("stage shape", capacity * 48, stage);
         let stage_state = buffer("stage state", 16, stage);
         let sidx = buffer("sorted idx", capacity * 4, U::STORAGE);
         let spos = buffer("sorted pos", capacity * 16, U::STORAGE);
-        let sshape = buffer("sorted shape", capacity * 16, U::STORAGE);
+        let sshape = buffer("sorted shape", capacity * 48, U::STORAGE);
         let shid = buffer("sorted h+id", capacity * 16, U::STORAGE);
         // Grid scan: one extra entry so `offsets[cell + 1]` exists for the last cell.
         let n0 = round_up(grid_cells + 1, 256);
@@ -319,7 +319,18 @@ impl GpuSim {
                 ],
             )
         });
-        let g_flag = both(&|c| group(&p_flag, &[(0, &params), (1, &state), (2, &pos[c]), (4, &flags)]));
+        let g_flag = both(&|c| {
+            group(
+                &p_flag,
+                &[
+                    (0, &params),
+                    (1, &state),
+                    (2, &pos[c]),
+                    (4, &flags),
+                    (7, &shape[c]),
+                ],
+            )
+        });
         let g_apply = both(&|c| {
             group(
                 &p_apply,
@@ -467,7 +478,7 @@ impl GpuSim {
         let count = count.min(self.capacity);
         let pr = self.read(&self.pos[self.cur], &self.stage_pos, count * 16)?;
         let h = self.read(&self.hh[self.cur], &self.stage_hh, count * 8)?;
-        let shape = self.read(&self.shape[self.cur], &self.stage_shape, count * 16)?;
+        let shape = self.read(&self.shape[self.cur], &self.stage_shape, count * 48)?;
         let mut cells = Cells::empty(self.capacity);
         cells.count = count;
         cells.pr[..count].copy_from_slice(bytemuck::cast_slice(&pr));

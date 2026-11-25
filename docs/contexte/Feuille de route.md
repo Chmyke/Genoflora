@@ -121,6 +121,39 @@ pas un décor : c'est ce qui donne un point d'appui pour qu'une partie puisse po
 Biais corrigé en route : l'axe de la cellule graine était tiré une fois pour toutes et toutes les
 cellules en héritaient. Il est maintenant tiré de la graine numérique.
 
+Audit des mécaniques (2026-11-25, demandé par Mickaël : se rapprocher du réel sans ajouter de
+capacité). Corrigé :
+
+1. La rotation tournait à pleine vitesse au moindre flux (direction seule). Elle est maintenant
+   proportionnelle à la force du flux.
+2. La diffusion suivait les quantités : une grosse cellule fuyait vers une petite aussi chargée.
+   Elle suit les concentrations, sous forme d'un échange qui rapproche deux cellules de leur
+   équilibre (stable, la masse est conservée).
+3. Une cellule s'allongeait à volume constant, comme une pâte. Une vraie cellule s'allonge en
+   prenant de l'eau : l'allongement ajoute du volume, la largeur ne change pas.
+4. La cellule entière pivotait. Elle ne pivote plus : seule la direction de croissance de sa
+   paroi tourne, et sa forme se construit par ses croissances successives (ellipsoïde quelconque,
+   `geno_sim::shape`). Une cellule se coupe en deux moitiés en travers de sa longueur. Une
+   croissance égale partout la rearrondit (l'eau pousse une paroi uniforme vers la sphère) ; sans
+   cela les cellules fraîchement divisées restaient des disques plats.
+6. Les divisions tombaient toutes ensemble tous les 20 pas. Chaque cellule se divise maintenant
+   dès qu'elle est prête (par sa taille, ou par sa longueur).
+
+Remesuré après correction (16 000 cellules sur GPU, `docs/images/Cellules allongées*.png`) :
+alignement 0,84 à 0,86 sur trois graines contre 0,32 à 0,52 pour le témoin aux axes figés ;
+cellules 2,7 fois plus longues que larges ; sans allongement, cellules presque rondes (1,7) et
+racine plus fine. Toujours rien ne monte.
+
+Non corrigé, signalé : le sens du transport de l'auxine vient directement de la gravité dans
+chaque cellule (point 5 de l'audit), ce qui est proche de coder le résultat « la racine descend ».
+Le corriger demande un vrai mécanisme (polarité des pompes PIN) : à décider.
+
+Effets sur la vérification : divisions à chaque pas, donc un tissu chaotique plus tôt. La
+comparaison exacte GPU contre juge tient 60 pas sur un tissu, au-delà elle est statistique
+(effectif à 1 %, forme, masse) ; la germination exacte n'est comparée que sur WARP (la carte
+arrondit un peu moins finement). La longueur d'une cellule est calculée par rotations de Jacobi :
+la formule directe était fausse de 0,2 % pour les cellules plates, et décidait des divisions.
+
 Limites : pas de sol ni de lumière ; le juge compare toutes les paires (petits tissus seulement) ;
 la grille GPU grossit avec l'étirement maximal, donc le calcul ralentit.
 

@@ -16,9 +16,10 @@ pub struct Grid {
 impl Grid {
     pub fn for_capacity(capacity: usize, p: &Params) -> Self {
         // A grid cell must be wider than the longest interaction: reach times two half-lengths,
-        // and a cell is at most r_div * stretch_max^2 long from its centre.
-        let longest = p.r_div * p.stretch_max * p.stretch_max;
-        let cell = (2.5 * p.r_div).max(p.reach * 2.0 * longest * 1.01);
+        // and a cell divides once its half-length reaches r_div * max_half_length (it may overshoot
+        // by one step of growth, hence the margin).
+        let longest = p.r_div * p.max_half_length.max(1.0);
+        let cell = (2.5 * p.r_div).max(p.reach * 2.0 * longest * 1.05);
         let radius = 1.6 * (capacity as f32).cbrt() * longest;
         let g1 = (2.0 * radius / cell).ceil() as u32 + 2;
         Self {
