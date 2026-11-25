@@ -77,3 +77,25 @@ fn stretched_cells_line_up_with_the_auxin_flow() -> Result<(), EngineError> {
     );
     Ok(())
 }
+
+// Nothing says "grow at the tip": cells only stay young where auxin gathers and mature where it
+// is scarce, and only young cells divide. Measured 2026-11-25: at 16000 cells the root reaches
+// 109 deep against 44 without maturing; at 30000 cells the root reached
+// 137 deep against 50 without maturing, and the old tissue near the seed stayed narrower than the
+// tip (it stopped thickening once mature).
+#[test]
+fn maturing_cells_make_the_root_grow_from_its_tip() -> Result<(), EngineError> {
+    let p = stretching();
+    let maturing = Params {
+        youth_rate: 0.01,
+        youth_half: 3.0,
+        ..p
+    };
+    let (Some(a), Some(b)) = (grow(&maturing)?, grow(&p)?) else {
+        return Ok(());
+    };
+    let (l, c) = (lie(&a, p.gravity), lie(&b, p.gravity));
+    eprintln!("root depth: {:.0} maturing, {:.0} not", l.reach.0, c.reach.0);
+    assert!(l.reach.0 >= 1.8 * c.reach.0, "{l:?} against {c:?}");
+    Ok(())
+}

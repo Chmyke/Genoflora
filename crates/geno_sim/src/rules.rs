@@ -2,7 +2,7 @@
 
 use crate::cells::{Cell, Cells};
 use crate::hash::axis;
-use crate::params::{INV_CBRT2, LENGTH_MARGIN, Params};
+use crate::params::{INV_CBRT2, LENGTH_MARGIN, Params, YOUNG};
 use crate::shape::{HALF, dir, extent, grow_along, grow_even, stretched, with_dir};
 use crate::soil;
 
@@ -138,6 +138,9 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     let eps = p.elong * (ca / (p.e_half + ca)) * (p.e_block / (p.e_block + ca)) * room * slowed;
     let shape = with_dir(&grow_along(&grow_even(s, even / pi[3]), &a, eps), a);
     let pin = polarise(me, g, p, ca);
+    // A cell stays young where auxin gathers, matures where it is scarce, and turns young again
+    // if auxin comes back.
+    let youth = me.youth + p.youth_rate * (ca / (p.youth_half + ca) - me.youth);
     Cell {
         pr: [
             pi[0] + held * g.disp[0],
@@ -148,6 +151,7 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
         shape,
         h: [auxin, cytokinin],
         pin,
+        youth,
     }
 }
 
@@ -186,7 +190,7 @@ pub fn divide(cells: &mut Cells, p: &Params, epoch: u32) {
     let mut rank = 0;
     for i in 0..count {
         let (m, s) = (cells.pr[i], cells.shape[i]);
-        if m[3] >= p.r_div || s[HALF] >= longest {
+        if cells.youth[i] > YOUNG && (m[3] >= p.r_div || s[HALF] >= longest) {
             let j = count + rank;
             rank += 1;
             if j >= capacity {
@@ -200,6 +204,7 @@ pub fn divide(cells: &mut Cells, p: &Params, epoch: u32) {
             let r = m[3] * INV_CBRT2;
             let h = cells.h[i].map(|v| v * 0.5);
             let pin = cells.pin[i];
+            let youth = cells.youth[i];
             cells.set(
                 i,
                 Cell {
@@ -207,6 +212,7 @@ pub fn divide(cells: &mut Cells, p: &Params, epoch: u32) {
                     shape,
                     h,
                     pin,
+                    youth,
                 },
             );
             cells.set(
@@ -216,6 +222,7 @@ pub fn divide(cells: &mut Cells, p: &Params, epoch: u32) {
                     shape,
                     h,
                     pin,
+                    youth,
                 },
             );
         }
@@ -234,6 +241,7 @@ mod tests {
             shape: sphere(r, [1.0, 0.0, 0.0]),
             h,
             pin: [0.0; 4],
+            youth: 1.0,
         }
     }
 
@@ -387,6 +395,42 @@ mod tests {
         let (lit, dark) = (made(p.surface + 3.0), made(p.surface - 10.0));
         assert!((lit - p.production - p.light_production).abs() < 1e-6, "{lit}");
         assert!((dark - p.production).abs() < 1e-5, "{dark}");
+    }
+
+    #[test]
+    fn a_cell_matures_without_auxin_and_turns_young_again_with_it() {
+        let p = Params {
+            youth_rate: 0.01,
+            ..Params::default()
+        };
+        let after = |youth: f32, auxin: f32, steps: u32| {
+            let mut c = Cell {
+                youth,
+                ..cell([0.0; 3], 1.0, [auxin, 0.0])
+            };
+            for _ in 0..steps {
+                c.youth = finish(&c, &Gathered::default(), &p).youth;
+            }
+            c.youth
+        };
+        assert!(after(1.0, 0.0, 1000) < 0.01);
+        assert!(after(0.0, 50.0, 1000) > 0.9);
+        // Slowly: the cell remembers what it was.
+        assert!(after(1.0, 0.0, 10) > 0.85);
+    }
+
+    #[test]
+    fn a_mature_cell_does_not_divide_and_daughters_inherit_youth() {
+        let p = Params::default();
+        let mut cells = Cells::seed(&p, 2, 1.0);
+        cells.youth[0] = 0.2;
+        cells.pr[0][3] = p.r_div;
+        divide(&mut cells, &p, 0);
+        assert_eq!(cells.count, 1);
+        cells.youth[0] = 0.8;
+        divide(&mut cells, &p, 1);
+        assert_eq!(cells.count, 2);
+        assert_eq!(cells.youth[1], 0.8);
     }
 
     #[test]

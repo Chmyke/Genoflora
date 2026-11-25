@@ -5,6 +5,9 @@
 /// the half-length would decide, differently on the judge and on the GPU.
 pub const LENGTH_MARGIN: f32 = 1.001;
 
+/// A cell divides only while its youth is above this.
+pub const YOUNG: f32 = 0.5;
+
 /// Radius factor of a daughter cell: volume is split evenly, so `r / cbrt(2)`.
 pub const INV_CBRT2: f32 = 0.793_700_5;
 
@@ -68,6 +71,11 @@ pub struct Params {
     pub e_half: f32,
     /// ...and the one above which it is held back by half.
     pub e_block: f32,
+    /// Share of the way a cell's youth moves per step toward what its auxin calls for (how fast
+    /// cells mature, or turn young again).
+    pub youth_rate: f32,
+    /// Auxin concentration that keeps a cell half young: more keeps it young, less lets it mature.
+    pub youth_half: f32,
     /// Longest half-length of a cell, in units of `r_div`: a cell that reaches it divides.
     pub max_half_length: f32,
     /// How fast the growth direction of a cell turns toward the line of the auxin flow through it,
@@ -120,6 +128,9 @@ impl Default for Params {
             elong: 0.0,
             e_half: 1.0,
             e_block: 1.0e6,
+            // Off in the default genome until measured: cells stay young.
+            youth_rate: 0.0,
+            youth_half: 1.0,
             max_half_length: 1.0,
             align: 0.0,
             divide_every: 1,

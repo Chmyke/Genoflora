@@ -13,7 +13,7 @@ use wgpu::{Buffer, BufferUsages as U, ComputePipeline};
 
 const COMMON: &str = include_str!("../shaders/common.wgsl");
 /// Storage buffers bound by the busiest shader (`step`).
-const STORAGE_BUFFERS: u32 = 13;
+const STORAGE_BUFFERS: u32 = 15;
 /// Queued steps are handed to the GPU in batches of this size, so the command list stays short.
 const SUBMIT_EVERY: u32 = 16;
 /// Longest wait for the GPU before giving up: a stuck device must fail loudly, never hang.
@@ -52,12 +52,14 @@ pub struct GpuSim {
     hh: [Buffer; 2],
     shape: [Buffer; 2],
     pin: [Buffer; 2],
+    youth: [Buffer; 2],
     state: Buffer,
     indirect: Buffer,
     stage_pos: Buffer,
     stage_hh: Buffer,
     stage_shape: Buffer,
     stage_pin: Buffer,
+    stage_youth: Buffer,
     stage_state: Buffer,
     cur: usize,
     pending: Option<wgpu::CommandEncoder>,
@@ -81,8 +83,8 @@ pub struct GpuSim {
     scan_div: Scan,
 }
 
-/// Size of the uniform block: 40 four-byte fields.
-const PARAMS_BYTES: usize = 160;
+/// Size of the uniform block: 44 four-byte fields.
+const PARAMS_BYTES: usize = 176;
 
 /// Uniform block of the shaders. Layout mirrors `Params` in `shaders/common.wgsl`.
 fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
@@ -128,6 +130,10 @@ fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
         f(p.soil_hardness),
         f(p.light_production),
         f(p.light_depth),
+        f(p.youth_rate),
+        f(p.youth_half),
+        u(0),
+        u(0),
         u(0),
     ]
     .concat()
@@ -188,6 +194,10 @@ impl GpuSim {
             buffer("pin0", capacity * 16, data),
             buffer("pin1", capacity * 16, data),
         ];
+        let youth = [
+            buffer("youth0", capacity * 4, data),
+            buffer("youth1", capacity * 4, data),
+        ];
         let state = buffer("state", 16, data);
         let indirect = buffer("indirect", 16, U::STORAGE | U::INDIRECT | U::COPY_DST);
         let params = buffer("params", PARAMS_BYTES, U::UNIFORM | U::COPY_DST);
@@ -196,6 +206,7 @@ impl GpuSim {
         let stage_hh = buffer("stage h", capacity * 8, stage);
         let stage_shape = buffer("stage shape", capacity * 48, stage);
         let stage_pin = buffer("stage pin", capacity * 16, stage);
+        let stage_youth = buffer("stage youth", capacity * 4, stage);
         let stage_state = buffer("stage state", 16, stage);
         let sidx = buffer("sorted idx", capacity * 4, U::STORAGE);
         let spos = buffer("sorted pos", capacity * 16, U::STORAGE);
@@ -336,6 +347,8 @@ impl GpuSim {
                     (11, &shape[1 - c]),
                     (12, &pin[c]),
                     (13, &pin[1 - c]),
+                    (14, &youth[c]),
+                    (15, &youth[1 - c]),
                 ],
             )
         });
@@ -348,6 +361,7 @@ impl GpuSim {
                     (2, &pos[c]),
                     (4, &flags),
                     (7, &shape[c]),
+                    (9, &youth[c]),
                 ],
             )
         });
@@ -363,6 +377,7 @@ impl GpuSim {
                     (5, &rank),
                     (7, &shape[c]),
                     (8, &pin[c]),
+                    (9, &youth[c]),
                 ],
             )
         });
@@ -382,12 +397,14 @@ impl GpuSim {
             hh,
             shape,
             pin,
+            youth,
             state,
             indirect,
             stage_pos,
             stage_hh,
             stage_shape,
             stage_pin,
+            stage_youth,
             stage_state,
             cur: 0,
             pending: None,
@@ -503,12 +520,14 @@ impl GpuSim {
         let h = self.read(&self.hh[self.cur], &self.stage_hh, count * 8)?;
         let shape = self.read(&self.shape[self.cur], &self.stage_shape, count * 48)?;
         let pin = self.read(&self.pin[self.cur], &self.stage_pin, count * 16)?;
+        let youth = self.read(&self.youth[self.cur], &self.stage_youth, count * 4)?;
         let mut cells = Cells::empty(self.capacity);
         cells.count = count;
         cells.pr[..count].copy_from_slice(bytemuck::cast_slice(&pr));
         cells.h[..count].copy_from_slice(bytemuck::cast_slice(&h));
         cells.shape[..count].copy_from_slice(bytemuck::cast_slice(&shape));
         cells.pin[..count].copy_from_slice(bytemuck::cast_slice(&pin));
+        cells.youth[..count].copy_from_slice(bytemuck::cast_slice(&youth));
         Ok(cells)
     }
 
@@ -524,6 +543,8 @@ impl GpuSim {
             .write_buffer(&self.shape[self.cur], 0, bytemuck::cast_slice(cells.shapes()));
         self.queue
             .write_buffer(&self.pin[self.cur], 0, bytemuck::cast_slice(cells.polarity()));
+        self.queue
+            .write_buffer(&self.youth[self.cur], 0, bytemuck::cast_slice(cells.youths()));
         self.queue
             .write_buffer(&self.state, 0, bytemuck::cast_slice(&[n as u32, epoch, 0, 0]));
         self.queue.write_buffer(

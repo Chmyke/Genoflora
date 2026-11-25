@@ -43,6 +43,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "soil_hardness" => p.soil_hardness = value.parse()?,
             "light_production" => p.light_production = value.parse()?,
             "light_depth" => p.light_depth = value.parse()?,
+            "youth_rate" => p.youth_rate = value.parse()?,
+            "youth_half" => p.youth_half = value.parse()?,
             "seed" => p.seed = value.parse()?,
             "max" => max = value.parse()?,
             _ => return Err(format!("unknown parameter {key}").into()),

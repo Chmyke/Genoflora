@@ -8,6 +8,7 @@
 @group(0) @binding(6) var<storage, read_write> indirect: array<u32>;
 @group(0) @binding(7) var<storage, read_write> shape: array<Shape>;
 @group(0) @binding(8) var<storage, read_write> pin: array<vec4<f32>>;
+@group(0) @binding(9) var<storage, read_write> youth: array<f32>;
 
 fn mix(v: u32) -> u32 {
     var x = v;
@@ -40,8 +41,9 @@ fn flag(@builtin(global_invocation_id) g: vec3<u32>) {
     if (i >= arrayLength(&flags)) { return; }
     var f = 0u;
     if (i < S.count) {
-        // 1.001 = geno_sim::params::LENGTH_MARGIN.
-        if (pos[i].w >= P.r_div || shape[i].c.y >= P.r_div * P.max_half_length * 1.001) { f = 1u; }
+        // 1.001 = geno_sim::params::LENGTH_MARGIN, 0.5 = geno_sim::params::YOUNG.
+        let ready = pos[i].w >= P.r_div || shape[i].c.y >= P.r_div * P.max_half_length * 1.001;
+        if (youth[i] > 0.5 && ready) { f = 1u; }
     }
     flags[i] = f;
 }
@@ -69,6 +71,7 @@ fn apply(@builtin(global_invocation_id) g: vec3<u32>) {
     hh[i] = h;
     hh[j] = h;
     pin[j] = pin[i];
+    youth[j] = youth[i];
 }
 
 @compute @workgroup_size(1)

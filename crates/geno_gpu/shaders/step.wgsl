@@ -15,6 +15,8 @@
 // Pump polarity (xyz; w unused), read by cell id: neighbours are looked up unsorted.
 @group(0) @binding(12) var<storage, read> pin: array<vec4<f32>>;
 @group(0) @binding(13) var<storage, read_write> pin_out: array<vec4<f32>>;
+@group(0) @binding(14) var<storage, read> youth: array<f32>;
+@group(0) @binding(15) var<storage, read_write> youth_out: array<f32>;
 
 @compute @workgroup_size(256)
 fn step(@builtin(global_invocation_id) g: vec3<u32>) {
@@ -108,4 +110,6 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     var keep = 1.0;
     if (len > 1.0) { keep = 1.0 / len; }
     pin_out[i] = vec4<f32>(n * keep, 0.0);
+    // Youth: toward what the auxin calls for (mirrors finish).
+    youth_out[i] = youth[i] + P.youth_rate * (ca / (P.youth_half + ca) - youth[i]);
 }

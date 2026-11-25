@@ -19,6 +19,8 @@ pub struct Cell {
     /// Polarity of the auxin pumps (PIN): xyz is the side of the cell where they sit, its length
     /// (at most 1) how strongly they gather there; w is unused (GPU alignment).
     pub pin: [f32; 4],
+    /// How young the cell is, from 1 (it can divide) to 0 (mature: it only grows).
+    pub youth: f32,
 }
 
 /// A cell's index is its stable identifier (cells never die yet). Vectors are `capacity` long;
@@ -30,6 +32,7 @@ pub struct Cells {
     pub shape: Vec<Shape>,
     pub h: Vec<[f32; 2]>,
     pub pin: Vec<[f32; 4]>,
+    pub youth: Vec<f32>,
 }
 
 impl Cells {
@@ -41,12 +44,13 @@ impl Cells {
             shape: vec![sphere(1.0, [1.0, 0.0, 0.0]); capacity],
             h: vec![[0.0; 2]; capacity],
             pin: vec![[0.0; 4]; capacity],
+            youth: vec![1.0; capacity],
         }
     }
 
     /// A single round cell of radius `p.r_div` at the origin: the starting point of a plant.
     /// Its growth direction is drawn from the run's seed, so it is aligned with nothing in
-    /// particular, and its auxin pumps are spread evenly (no polarity).
+    /// particular, its auxin pumps are spread evenly (no polarity), and it is young.
     pub fn seed(p: &crate::Params, capacity: usize, hormone: f32) -> Self {
         let mut cells = Self::empty(capacity.max(1));
         cells.count = 1;
@@ -58,6 +62,7 @@ impl Cells {
                 shape: sphere(p.r_div, a),
                 h: [hormone, 0.0],
                 pin: [0.0; 4],
+                youth: 1.0,
             },
         );
         cells
@@ -73,6 +78,7 @@ impl Cells {
             shape: self.shape[i],
             h: self.h[i],
             pin: self.pin[i],
+            youth: self.youth[i],
         }
     }
 
@@ -81,6 +87,7 @@ impl Cells {
         self.shape[i] = cell.shape;
         self.h[i] = cell.h;
         self.pin[i] = cell.pin;
+        self.youth[i] = cell.youth;
     }
 
     /// The living cells: positions with radius.
@@ -96,6 +103,11 @@ impl Cells {
     /// Hormone amounts of the living cells.
     pub fn hormone(&self) -> &[[f32; 2]] {
         &self.h[..self.count]
+    }
+
+    /// Youth of the living cells.
+    pub fn youths(&self) -> &[f32] {
+        &self.youth[..self.count]
     }
 
     /// Pump polarities of the living cells.

@@ -57,16 +57,19 @@ fn engine(p: &Params, n: usize, capacity: usize, adapter: Adapter) -> Result<Gpu
 fn matches_the_judge_cell_by_cell_on_a_short_run() -> Result<(), EngineError> {
     on_each_adapter(|adapter| {
         // The test tissue straddles the soil surface: part of it in the dark, part in the light.
-        let p = Params::default();
+        // Its cells mature fast, so that some stop dividing within the run.
+        let p = Params {
+            youth_rate: 0.05,
+            ..Params::default()
+        };
         let start = lattice(500, 4096, &p);
-        let gap = gap_to_judge(
-            &mut GpuSim::new(&p, &start, adapter)?,
-            &p,
-            &start,
-            exact_steps(adapter),
-        )?;
+        let mut gpu = GpuSim::new(&p, &start, adapter)?;
+        let gap = gap_to_judge(&mut gpu, &p, &start, exact_steps(adapter))?;
         assert_eq!(gap.counts.0, gap.counts.1, "{adapter:?} {gap:?}");
         assert!(gap.position <= 1e-3 && gap.mass <= 1e-4, "{adapter:?} {gap:?}");
+        let cells = gpu.snapshot()?;
+        let mature = cells.youths().iter().filter(|&&y| y <= 0.5).count();
+        assert!(mature > 20, "{adapter:?} only {mature} mature cells");
         Ok(())
     })
 }

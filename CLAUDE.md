@@ -38,5 +38,8 @@ viendra dans un crate séparé ; la simulation n'en dépendra jamais.
   sent et fait), jamais un résultat. Aucun chiffre observé dans la nature (angle, période, rapport)
   n'entre dans une règle ni dans le génome de départ ; il sert seulement, après coup, à mesurer si
   ce qui a émergé ressemble au réel.
+- Jamais de béquille (règle de Mickaël, 2026-11-25) : une règle qui fait marcher un résultat plus
+  vite en donnant à un signal un rôle qu'il n'a pas dans le réel est refusée. Quand un résultat
+  manque, la mesure désigne la vraie cause manquante, et c'est elle qu'on ajoute.
 - Ne pas figer le modèle sur « seule la pointe vit » : des cellules anciennes peuvent grandir à leur
   rythme (épaississement du tronc).

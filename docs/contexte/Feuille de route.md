@@ -266,6 +266,37 @@ Observé sans le corriger : deux essais à grande taille sur la carte se sont ar
 GPU dépassée, puis soumission refusée). Cause probable : la grille qui grossit avec l'étirement
 des cellules (limite déjà notée). À traiter avant de viser le million de cellules.
 
-Prochaine étape, à trancher : donner au haut une pointe à lui. Piste : l'identité des cellules (tige ou racine), qui émergerait
-de ce qu'une cellule a vécu (lumière reçue, rapport auxine/cytokinine) et changerait sa réaction à
-l'auxine ; la cytokinine seule a déjà échoué parce qu'elle restait près de la racine.
+Mûrir (2026-11-25, capacité validée par Mickaël, signal choisi par lui : l'auxine seule, « jamais
+de béquille »). Chaque cellule porte une jeunesse de 0 à 1, héritée à la division. À chaque pas
+elle se rapproche lentement (`youth_rate`) de ce que demande l'auxine qu'elle contient (la moitié
+pour `youth_half`) : elle mûrit là où l'auxine manque, et redevient jeune si l'auxine revient
+(racines latérales, épaississement plus tard). Seule une cellule jeune (au-dessus de 0,5) se
+divise ; une cellule mûre grandit et s'allonge encore. Éteinte dans le génome par défaut
+(`youth_rate = 0`), en attendant la décision de Mickaël.
+
+Mesuré sur la carte (génome à cellules allongées, lumière, sol, 20 000 à 30 000 cellules ;
+`docs/images/Cellules qui mûrissent.png`) :
+
+| Vitesse | Seuil | Profondeur de la racine | Cellules à l'air | Hauteur à l'air |
+|---|---|---|---|---|
+| sans maturation | | 50 | 4 600 | 24 |
+| 0,001 à 0,01 | 0,3 | 48 à 50 | 3 300 à 4 000 | 22 à 23 |
+| 0,001 à 0,01 | 1 | 67 à 81 | 280 à 560 | 15 à 22 |
+| 0,001 à 0,01 | 3 | 112 à 137 | 15 à 30 | 4 à 6 |
+
+- Le reste se fige : les divisions se concentrent à la pointe, où l'auxine s'accumule ; le tissu
+  ancien près de la graine ne s'épaissit plus (rayon 11 à 16 contre 24 à la pointe), et la
+  racine devient deux à trois fois plus longue pour le même nombre de cellules. Un test sur la
+  carte l'enregistre (`maturing_cells_make_the_root_grow_from_its_tip` : 109 contre 44 à 16 000
+  cellules).
+- Le haut mûrit et la plante ne sort plus de terre, comme annoncé : les pompes le vident de son
+  auxine. Cause manquante désignée : une pointe de tige tenue par son propre système (dans le
+  réel, WUS/CLV3 et la cytokinine).
+- La racine n'est pas plus fine : sa pointe jeune est aussi large qu'elle, parce que le maximum
+  d'auxine couvre toute la pointe. Dans une vraie racine il est étroit, grâce au retour de
+  l'auxine vers le haut par l'épiderme puis vers le centre (« fontaine inversée »). Deuxième cause
+  manquante désignée.
+
+Prochaine étape, à trancher : allumer ou non la maturation par défaut ; puis l'une des deux causes
+manquantes désignées par la mesure : une pointe de tige qui se tient elle-même (WUS/CLV3,
+cytokinine), ou un maximum d'auxine étroit à la pointe de la racine (fontaine inversée).
