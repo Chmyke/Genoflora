@@ -151,6 +151,8 @@ fn aerial(cells: &Cells, p: &Params) -> (usize, f32, f32) {
 // Nothing says "grow up" or "make a stem". Cells cast a shadow on those below them, so only the
 // cells on top stay lit, make cytokinin and stay young; those they leave behind mature. The young
 // top keeps climbing on what it has laid down: a stem, while the root goes down.
+// Measured 2026-11-25 on three seeds at 16000 cells: 375 to 1800 cells in the air, 24 to 52 high
+// for 6 to 10 across, root 85 to 95 deep.
 #[test]
 fn shaded_cells_mature_and_a_stem_rises_from_the_lit_top() -> Result<(), EngineError> {
     for seed in 1..=3 {

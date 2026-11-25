@@ -335,7 +335,43 @@ Sonde : un essai qui grossit très vite dépasse la capacité entre deux relevé
 abandonne (« soumission refusée ») ; des relevés plus rapprochés l'évitent. La cause exacte dans
 le moteur reste à diagnostiquer.
 
-Prochaine étape : un foyer qui se tient lui-même à la pointe de tige (les cellules jeunes
-retiennent leurs voisines, WUS/CLV3), puis un maximum d'auxine étroit à la pointe de racine
-(fontaine inversée). La maturation et la cytokinine de lumière restent éteintes par défaut tant
-que la pointe ne se tient pas : allumées, la plante de référence serait soit enterrée, soit un cal.
+Ombre : une tige sort de terre (2026-11-25). Avant d'ajouter un signal de retenue, l'écart
+d'environnement noté plus haut a été corrigé : une cellule placée au-dessus d'une autre lui fait
+de l'ombre (`shade` : la lumière est divisée par e pour chaque unité de couverture ; la couverture
+additionne, sur les voisines directes, à quel point chacune est à l'aplomb). C'est de
+l'environnement, pas une capacité de cellule.
+
+Mesuré sur la carte (cellules allongées, maturation 0,01 / 3, auxine bloquant la cytokinine à 1 ;
+`docs/images/Une tige sort de terre.png`) :
+
+| Cytokinine de lumière | Ombre | Cellules à l'air | Hauteur | Écart au centre |
+|---|---|---|---|---|
+| 0,01 | 0,3 à 3 | 2 à 26 | rien ne sort | |
+| 0,03 | 1 | 20 100 sur 28 200 | 48 | 14 (masse) |
+| 0,03 | 3 | 2 700 sur 26 100 | 61 | 8 (tige) |
+
+Avec une ombre forte, seules les cellules du dessus restent éclairées, fabriquent de la
+cytokinine et restent jeunes ; celles qu'elles laissent derrière elles, à l'ombre, mûrissent. Le
+sommet jeune grimpe sur ce qu'il a déposé : un col étroit sort de terre, puis une couronne qui se
+divise en lobes, pendant que la racine descend (85 à 106 de profondeur). Trois graines sur trois
+(à 16 000 cellules : 375 à 1 800 cellules à l'air, 24 à 52 de haut pour 6 à 10 d'écart au centre ;
+test `shaded_cells_mature_and_a_stem_rises_from_the_lit_top`). Première plante avec une tige et
+une racine, sans qu'aucune règle ne dise « monte ».
+
+Le signal de retenue (WUS/CLV3) n'a donc pas été nécessaire pour obtenir une tige : l'ombre joue
+le rôle de repère spatial. Il reste la bonne piste pour la suite : la couronne s'élargit et se
+lobe sans contrôle, et rien ne fixe encore la taille du foyer. Non mesuré : les lobes
+(ramifications ? ébauches de feuilles ?), et la tenue à plus grande taille.
+
+Plante de référence (2026-11-25, décision de Mickaël) : maturation (0,01 / 3), cytokinine de
+lumière (0,03, bloquée par l'auxine à 1) et ombre (3) sont allumées dans le génome par défaut.
+Constat en les allumant : avec l'ancien génome par défaut (peu exigeant en auxine, transport
+lent), rien ne sortait de terre ; le génome par défaut reprend donc aussi les deux réglages avec
+lesquels tout a été mesuré depuis la germination (`half_sat = 10`, `polar = 0.1`, choix de Claude).
+Mesuré sur la carte, cellules rondes, 20 000 cellules : tige de 42 de haut pour 6 d'écart au
+centre (2 200 cellules à l'air), racine de 92. L'allongement des cellules reste éteint par défaut.
+Les tests de la racine tournent sur le génome d'avant la maturation (`frugal`).
+
+Prochaine étape : mesurer la couronne (lobes), puis fixer la taille du foyer de la pointe de tige
+(les cellules jeunes retiennent leurs voisines, WUS/CLV3), puis un maximum d'auxine étroit à la
+pointe de racine (fontaine inversée).
