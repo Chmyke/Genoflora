@@ -57,12 +57,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let full = cells.count >= capacity * 97 / 100;
         if let Some(f) = top.filter(|_| every_profile || shot == shots || full) {
             println!(
-                "  ring lit young auxin cytokinin restraint (rings one radius wide around the top focus)"
+                "  ring lit young auxin cytokinin restraint relay (rings one radius wide around the top focus)"
             );
             for (ring, r) in profile(&cells, f.centre, 8).iter().enumerate() {
                 println!(
-                    "  {ring:>4} {:>3} {:>5.2} {:>5.2} {:>9.2} {:>9.3}",
-                    r.cells, r.young, r.auxin, r.cytokinin, r.restraint
+                    "  {ring:>4} {:>3} {:>5.2} {:>5.2} {:>9.2} {:>9.3} {:>5.2}",
+                    r.cells, r.young, r.auxin, r.cytokinin, r.restraint, r.relay
                 );
             }
         }

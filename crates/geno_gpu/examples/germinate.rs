@@ -1,6 +1,6 @@
 //! Probe: grows one seed cell on the GPU and writes snapshots as CSV, one file per snapshot, so
 //! that what emerges can be measured and drawn. Columns: x, y, z, r, auxin, cytokinin, restraint
-//! signal, n00, n11, n22, n01, n02, n12, growth direction xyz, pump polarity xyz, youth, light received.
+//! signal, relay, n00, n11, n22, n01, n02, n12, growth direction xyz, pump polarity xyz, youth, light received.
 //! Usage: cargo run --release -p geno_gpu --example germinate -- <out dir> <steps> <snapshots>
 //!        [polar=0.05] [half_sat=4] [production=..] [decay=..] [diffusion=..] [max=50000] [capacity=131072] [first=1]
 //! The run stops once `max` cells are alive.

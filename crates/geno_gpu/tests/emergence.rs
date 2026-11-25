@@ -3,7 +3,7 @@
 //! (the software adapter would take hours).
 
 use geno_gpu::{Adapter, GpuSim};
-use geno_sim::checks::{foci, lie, on_the_edge, packing, run};
+use geno_sim::checks::{foci, lie, packing, run};
 use geno_sim::{Cells, Engine, EngineError, Params};
 
 /// Grows a seed until the tissue is nearly full, or `None` without a graphics card.
@@ -125,7 +125,8 @@ fn maturing_cells_make_the_root_grow_from_its_tip() -> Result<(), EngineError> {
 // confines the young cells to a tip. This test records the ball; it is expected to break the day
 // a tip holds itself (in real plants, the stem cells hold back their neighbours: WUS/CLV3).
 // Remeasured 2026-11-25 once the soil only held the cells that touch it: the threshold moved from
-// 0.01 to 0.03 (9700 of 16000 cells in the air, 35 high for 17 across).
+// 0.01 to 0.03 (9700 of 16000 cells in the air, 35 high for 17 across). With the relay and the
+// restraint signal, still a ball without shade: 7800 cells in the air, 37 high for 18 across.
 #[test]
 fn light_made_cytokinin_wakes_the_top_into_a_ball_not_a_shoot() -> Result<(), EngineError> {
     let p = Params {
@@ -170,7 +171,8 @@ fn aerial(cells: &Cells, p: &Params) -> (usize, f32, f32) {
 // cells on top stay lit, make cytokinin and stay young; those they leave behind mature. The young
 // top keeps climbing on what it has laid down: a stem, while the root goes down.
 // Measured 2026-11-25 on three seeds at 16000 cells: 375 to 1800 cells in the air, 24 to 52 high
-// for 6 to 10 across, root 85 to 95 deep.
+// for 6 to 10 across, root 85 to 95 deep. With the relay and the restraint signal: 3900 to 4200
+// cells in the air, 74 to 76 high for 10 to 12 across, root 81 to 82 deep.
 #[test]
 fn shaded_cells_mature_and_a_stem_rises_from_the_lit_top() -> Result<(), EngineError> {
     for seed in 1..=3 {
@@ -178,7 +180,7 @@ fn shaded_cells_mature_and_a_stem_rises_from_the_lit_top() -> Result<(), EngineE
             seed,
             youth_rate: 0.01,
             youth_half: 3.0,
-            ck_light: 0.03,
+            ck_light: 0.3,
             ck_block: 1.0,
             shade: 3.0,
             ..stretching()
@@ -229,96 +231,69 @@ fn the_reference_plant_does_not_pile_up() -> Result<(), EngineError> {
     Ok(())
 }
 
-// What the lit top of the reference plant is made of, measured 2026-11-25 on three seeds. A focus
-// of young cells does stay at the very top and climbs steadily: a tip. But nothing sets its size:
-// it swells and shrinks between about ten and more than a hundred cells, and pieces of it stay
-// behind on the lit shoulders, where they live on as tips of their own (side branches, not
-// leaves: same hormones as the tip, never flat, no regular spacing). This test records the
-// wandering size; it is expected to break the day the tip holds its size (in real plants, the
-// stem cells hold back their neighbours: WUS/CLV3).
-// Why it wanders, measured 2026-11-25: no cell of the stem is clearly young or clearly mature.
-// Cytokinin is about as rich all over the lit top, and what it calls for sits right at the
-// threshold under which a cell stops dividing: every lit cell has a youth between 0.4 and 0.6,
-// so a focus is whichever cells happen to stand a hair above one half.
+/// Sizes of the biggest young focus in the air, every thousand steps from the moment one reaches
+/// ten cells until the tissue is full. `None` without a graphics card.
+fn tip_sizes(p: &Params) -> Result<Option<Vec<usize>>, EngineError> {
+    let mut sizes = Vec::new();
+    let grown = grow_watched(p, 1000, |cells| {
+        let aerial = foci(cells, p, |q| geno_sim::soil::share(p, &q[..3]) < 0.5);
+        let biggest = aerial.first().map_or(0, |f| f.cells);
+        if biggest >= 10 || !sizes.is_empty() {
+            sizes.push(biggest);
+        }
+    })?;
+    Ok(grown.map(|_| sizes))
+}
+
+// Nothing says how big the tip of the stem is. Cytokinin, made by the lit skin, fades with depth;
+// where it calls, cells make a relay that passes from cell to cell and keeps them young; the skin
+// cells that hold relay make a restraint signal that goes back down and dulls the call (in real
+// plants: WUS and CLV3). The more young cells, the more restraint: the tip settles on a size.
+// Before the relay (measured 2026-11-25), the biggest focus wandered between 3 and 147 cells and
+// a restraint signal alone changed nothing: every cell of the stem sat next to the dividing
+// threshold. Measured with the loop, three seeds: 180 to 450 cells over 30000 steps on a plant of
+// 65000 cells. Here, once the tip is set up (second half of the run), it stays within a factor
+// four (3.1 at worst: it halves when a side branch leaves it) and never empties.
 #[test]
-fn the_tip_of_the_stem_has_no_steady_size_yet() -> Result<(), EngineError> {
+fn the_tip_of_the_stem_holds_its_size() -> Result<(), EngineError> {
     for seed in 1..=3 {
         let p = Params {
             seed,
             ..Params::default()
         };
-        let mut sizes = Vec::new();
-        let mut branches = 0;
-        let grown = grow_watched(&p, 1000, |cells| {
-            let aerial = foci(cells, &p, |q| geno_sim::soil::share(&p, &q[..3]) < 0.5);
-            // Once the stem is out: a tip of at least ten cells has been seen.
-            let biggest = aerial.first().map_or(0, |f| f.cells);
-            if biggest >= 10 || !sizes.is_empty() {
-                sizes.push(biggest);
-            }
-            branches = aerial.iter().filter(|f| f.cells >= 6).count();
-        })?;
-        let Some(cells) = grown else {
+        let Some(sizes) = tip_sizes(&p)? else {
             return Ok(());
         };
-        let (low, high) = (
-            sizes.iter().copied().min().unwrap_or(0),
-            sizes.iter().copied().max().unwrap_or(0),
-        );
-        let lit = |i: usize| cells.pin[i][3] >= 0.5 && geno_sim::soil::share(&p, &cells.pr[i][..3]) < 0.5;
-        let undecided = on_the_edge(&cells, 0.1, lit);
-        eprintln!(
-            "seed {seed}: biggest focus in the air {sizes:?}, {branches} foci at the end, {undecided:.2} of the lit cells on the edge"
-        );
+        eprintln!("seed {seed}: biggest focus in the air {sizes:?}");
         assert!(
-            sizes.len() >= 5,
+            sizes.len() >= 10,
             "seed {seed}: the stem came out too late, {sizes:?}"
         );
-        assert!(high >= 4 * low.max(1), "seed {seed}: {sizes:?}");
-        assert!(undecided >= 0.9, "seed {seed}: {undecided}");
+        let settled = &sizes[sizes.len() / 2..];
+        let (low, high) = (
+            settled.iter().copied().min().unwrap_or(0),
+            settled.iter().copied().max().unwrap_or(0),
+        );
+        assert!(low >= 100 && high <= 4 * low, "seed {seed}: {settled:?}");
     }
     Ok(())
 }
 
-// A restraint signal made by the cells that can divide, which dulls what cytokinin calls for (the
-// CLV3 half of the WUS/CLV3 loop, alone). Measured 2026-11-25 on sixty settings and three seeds:
-// it does not hold the size of the tip. Weak, nothing changes; three times stronger than the best
-// setting, no stem comes out at all; in between, the wandering narrows on one seed (9 to 35 cells)
-// and not on the next (6 to 140). The signal has nothing to tell apart: the cells of the stem all
-// sit next to the threshold (see above). This test records it on the best setting found; it is
-// expected to break the day a tip holds its size.
+// The restraint signal is what holds the tip: the same plant without it has a tip that keeps
+// swelling (measured 2026-11-25: 1400 cells and still growing on a plant of 65000 cells, against
+// 200 to 450 with it; twice the signal, 40 to 130).
 #[test]
-fn a_restraint_signal_alone_does_not_hold_the_tip() -> Result<(), EngineError> {
-    let mut widest = 0;
-    for seed in 1..=3 {
-        let p = Params {
-            seed,
-            restraint_made: 0.05,
-            restraint_decay: 0.1,
-            ..Params::default()
-        };
-        let mut sizes = Vec::new();
-        let grown = grow_watched(&p, 1000, |cells| {
-            let aerial = foci(cells, &p, |q| geno_sim::soil::share(&p, &q[..3]) < 0.5);
-            let biggest = aerial.first().map_or(0, |f| f.cells);
-            if biggest >= 10 || !sizes.is_empty() {
-                sizes.push(biggest);
-            }
-        })?;
-        if grown.is_none() {
-            return Ok(());
-        }
-        let (low, high) = (
-            sizes.iter().copied().min().unwrap_or(0),
-            sizes.iter().copied().max().unwrap_or(0),
-        );
-        eprintln!("seed {seed}: biggest focus in the air {sizes:?}");
-        assert!(
-            sizes.len() >= 5,
-            "seed {seed}: the stem came out too late, {sizes:?}"
-        );
-        widest = widest.max(high / low.max(1));
-    }
-    assert!(widest >= 8, "the tip wandered by a factor {widest} at most");
+fn without_the_restraint_signal_the_tip_keeps_swelling() -> Result<(), EngineError> {
+    let held = Params::default();
+    let free = Params {
+        restraint_made: 0.0,
+        ..held
+    };
+    let (Some(held), Some(free)) = (tip_sizes(&held)?, tip_sizes(&free)?) else {
+        return Ok(());
+    };
+    eprintln!("with the signal {held:?}, without {free:?}");
+    let last = |sizes: &[usize]| sizes.iter().rev().take(3).sum::<usize>() / 3;
+    assert!(last(&free) >= 2 * last(&held), "{held:?} against {free:?}");
     Ok(())
 }

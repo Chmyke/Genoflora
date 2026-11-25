@@ -519,7 +519,7 @@ la cytokinine) : une cellule assez jeune pour se diviser l'émet, elle diffuse e
 atténue ce que la cytokinine réclame pour garder une cellule jeune (la moitié CLV3 de la boucle
 WUS / CLV3, sans relais). Elle n'agit pas sur la jeunesse tenue par l'auxine (la racine). Règle
 dans le juge, recopiée sur la carte et comparée cellule par cellule ; éteinte dans le génome par
-défaut (`restraint_made` 0), parce qu'elle ne donne pas le résultat.
+défaut à ce stade (`restraint_made` 0), parce que seule elle ne donne pas le résultat.
 
 Soixante réglages (force et portée), puis trois graines sur les meilleurs :
 
@@ -547,20 +547,71 @@ jeunesses valent environ 0,5, les cellules mûres émettaient autant que les jeu
 Cause manquante désignée par la mesure : rien, dans la tige, ne sépare nettement une cellule
 jeune d'une cellule mûre, ni ne désigne un endroit. C'est ce que la recherche attribue au relais
 de type WUS et au repère de surface (section 2 et 5 de `docs/Modèles scientifiques de plantes.md`).
-À proposer à Mickaël avant tout ajout.
-
-Tests : `a_restraint_signal_alone_does_not_hold_the_tip` enregistre l'errance avec le signal, et
-`the_tip_of_the_stem_has_no_steady_size_yet` enregistre en plus la jeunesse collée au seuil
-(mesure `checks::on_the_edge`). Les deux doivent casser le jour où la pointe tiendra sa taille.
 
 Outils : la sonde `tip` (`cargo run --release -p geno_gpu --example tip -- <pas> <relevés>
-[paramètre=valeur]`) imprime à chaque relevé les foyers à l'air et le profil du centre au bord du
-foyer le plus haut (mesure `checks::profile`). Les sondes acceptent tous les paramètres du génome
-par leur nom (`Params::set`). Les relevés de `germinate` ont une colonne de plus (le signal de
-retenue, après la cytokinine) et la visionneuse l'affiche ; les relevés d'avant ne se relisent
-plus avec la visionneuse d'aujourd'hui.
+[capacity=..] [paramètre=valeur]`) imprime à chaque relevé les foyers à l'air et le profil du
+centre au bord du foyer le plus haut (mesure `checks::profile`). Les sondes acceptent tous les
+paramètres du génome par leur nom (`Params::set`).
 
-Prochaine étape : décision de Mickaël sur la cause à ajouter pour la pointe de tige (relais de
-type WUS et repère de surface), puis un maximum d'auxine étroit à la pointe de racine (fontaine
-inversée). Les mesures à faire bouger existent : `the_tip_of_the_stem_has_no_steady_size_yet` et
-`a_restraint_signal_alone_does_not_hold_the_tip`.
+Le relais et le repère de surface (2026-11-25, cause validée par Mickaël sur proposition). La
+boucle WUS / CLV3 entière, écrite en causes locales, quatre substances en tout :
+
+- La cytokinine ne garde plus une cellule jeune par elle-même. Là où elle appelle (cytokinine
+  abondante, auxine rare), la cellule fabrique un relais, qui passe de cellule en cellule, et
+  c'est le relais qui tient les cellules jeunes (WUS). La racine n'est pas touchée : l'auxine y
+  tient la jeunesse directement.
+- Le signal de retenue est émis par les cellules de la peau qui reçoivent du relais, et il
+  atténue l'appel de la cytokinine, donc la fabrication du relais (CLV3). Une cellule est « de la
+  peau » dans la mesure où ses voisines sont toutes du même côté : la même estimation locale que
+  pour ce qu'elle touche de terre. Aucune lumière n'entre dans ce repère.
+- La cytokinine s'efface dix fois plus vite (`ck_decay` 0,01, `ck_light` 0,3) : elle ne porte
+  plus qu'à quelques cellules de la peau éclairée qui la fabrique, et dit donc à une cellule à
+  quelle profondeur elle se trouve.
+
+Mesuré, dans l'ordre :
+
+| Génome | Pointe de tige |
+|---|---|
+| Relais seul, cytokinine d'avant (longue portée) | une boule : 12 900 cellules jeunes d'un bloc |
+| Relais seul, cytokinine courte | une pointe nette sur l'axe, qui enfle sans fin (1 400 cellules et ça continue) |
+| Avec signal de retenue 0,015 | 500 à 700 cellules |
+| Avec signal de retenue 0,03 (génome de référence) | 200 à 450 cellules |
+| Avec signal de retenue 0,06 | 40 à 130 cellules |
+| Dix fois le réglage de référence | aucune tige |
+
+Le signal règle donc la taille de façon graduée, et il la tient : sur trois graines et une
+plante de 65 000 cellules, 180 à 450 cellules pendant 30 000 pas (avant : de 3 à 147, sans
+plancher ni plafond). La plante de référence à 16 000 cellules, trois graines : 3 900 à 4 200
+cellules à l'air, tige de 74 à 76 de haut pour 10 à 12 de large, racine de 81 à 82 de profondeur.
+Elle monte bien plus vite qu'avant (76 de haut à 16 000 cellules, contre 24 à 52).
+
+Ce qui reste vrai et n'est pas réglé :
+
+- La pointe varie encore d'un facteur 2 à 3 : elle se dédouble quand un morceau part sur le côté,
+  puis regrossit.
+- Les ramifications se multiplient : 1 foyer au départ, 39 à 54 à 35 000 cellules à l'air. Rien
+  ne retient un bourgeon (dans le réel : l'auxine de la tige et le sucre, section 2 de la
+  recherche). La pointe principale s'écarte de l'axe (8 à 12).
+- À la peau éclairée, le relais se cale juste au seuil (0,9 pour un seuil de 1) : 86 à 96 % des
+  cellules éclairées restent à moins de 0,1 du seuil de division. Le contraste jeune / mûr existe
+  maintenant entre la pointe et le reste de la tige, pas à l'intérieur de la peau.
+- Sans ombre, c'est toujours une boule.
+
+Tests : `the_tip_of_the_stem_holds_its_size` (remplace le constat d'errance, cassé comme prévu)
+et `without_the_restraint_signal_the_tip_keeps_swelling`. Le constat « le signal seul ne tient
+pas la pointe » n'a plus de test : sans relais, ce génome n'existe plus (la cytokinine n'agit que
+par lui) ; il reste écrit ci-dessus.
+
+Relevés et visionneuse : `germinate` écrit deux colonnes de plus (signal de retenue, relais,
+après la cytokinine) et la visionneuse les affiche ; les relevés d'avant ne se relisent plus. La
+vue 3D n'a pas encore de mode pour ces deux substances.
+
+Mesure préparatoire pour la racine (une graine, 7 400 cellules, avant le relais) : le maximum
+d'auxine est déjà étroit en hauteur (10 cellules sur 2 de haut tiennent plus de la moitié du pic,
+139 contre 0,3 dix rayons plus haut), mais la racine est très épaisse (rayon d'environ 12), toute
+sa largeur est jeune sur 8 de haut, et près de la pointe l'auxine est plus forte au bord que dans
+l'axe (23 contre 8), l'inverse plus haut (0,1 contre 0,5).
+
+Prochaine étape : un maximum d'auxine étroit à la pointe de racine (fontaine inversée), en
+commençant par un test qui enregistre la mesure ci-dessus. Ensuite, ce qui retient les
+ramifications de la tige.

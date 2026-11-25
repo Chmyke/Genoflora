@@ -11,22 +11,23 @@ import os
 import sys
 
 # Columns of the CSV, see crates/geno_gpu/examples/germinate.rs.
-X, Y, Z, R, AUXIN, CYTOKININ, RESTRAINT = 0, 1, 2, 3, 4, 5, 6
-PIN, YOUTH, LIGHT = 16, 19, 20
+X, Y, Z, R, AUXIN, CYTOKININ, RESTRAINT, RELAY = 0, 1, 2, 3, 4, 5, 6, 7
+PIN, YOUTH, LIGHT = 17, 20, 21
 # Numbers kept per cell, see N in viewer.html.
-KEPT = 12
+KEPT = 13
 
 
 def load(path):
     """One snapshot as a flat list: x, y, z, r, auxin and cytokinin concentrations, youth, light,
-    pump polarity xyz, restraint signal concentration, per cell."""
+    pump polarity xyz, restraint signal and relay concentrations, per cell."""
     flat = []
     with open(path, encoding="ascii") as lines:
         for line in lines:
             v = [float(c) for c in line.split(",")]
             volume = v[R] ** 3
             cell = [v[X], v[Y], v[Z], v[R], v[AUXIN] / volume, v[CYTOKININ] / volume,
-                    v[YOUTH], v[LIGHT], v[PIN], v[PIN + 1], v[PIN + 2], v[RESTRAINT] / volume]
+                    v[YOUTH], v[LIGHT], v[PIN], v[PIN + 1], v[PIN + 2], v[RESTRAINT] / volume,
+                    v[RELAY] / volume]
             flat.extend(round(c, 3) for c in cell)
     return flat
 

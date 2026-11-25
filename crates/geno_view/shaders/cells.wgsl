@@ -20,7 +20,7 @@ struct Shape { a: vec4<f32>, b: vec4<f32>, c: vec4<f32> }
 @group(0) @binding(1) var<storage, read> S: State;
 @group(0) @binding(2) var<storage, read> pos: array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read> shape: array<Shape>;
-@group(0) @binding(4) var<storage, read> hh: array<vec3<f32>>;
+@group(0) @binding(4) var<storage, read> hh: array<vec4<f32>>;
 @group(0) @binding(5) var<storage, read> pin: array<vec4<f32>>;
 @group(0) @binding(6) var<storage, read> youth: array<f32>;
 

@@ -37,7 +37,7 @@ pub fn lattice(n: usize, capacity: usize, p: &Params) -> Cells {
             p.r_div * (0.8 + 0.2 * unit(hash(p.seed, id, 3))),
         ];
         cells.shape[i] = crate::shape::sphere(cells.pr[i][3], a);
-        cells.h[i] = [4, 5, 6].map(|salt| unit(hash(p.seed, id, salt)));
+        cells.h[i] = [4, 5, 6, 8].map(|salt| unit(hash(p.seed, id, salt)));
     }
     cells
 }
@@ -149,17 +149,6 @@ pub fn foci(c: &Cells, p: &Params, keep: impl Fn(&[f32; 4]) -> bool) -> Vec<Focu
     out
 }
 
-/// Share of the cells that `keep` retains whose youth lies within `margin` of the threshold under
-/// which a cell stops dividing: cells that are neither clearly young nor clearly mature.
-pub fn on_the_edge(c: &Cells, margin: f32, keep: impl Fn(usize) -> bool) -> f32 {
-    let kept: Vec<usize> = (0..c.count).filter(|&i| keep(i)).collect();
-    let near = kept
-        .iter()
-        .filter(|&&i| (c.youth[i] - crate::params::YOUNG).abs() <= margin)
-        .count();
-    near as f32 / kept.len().max(1) as f32
-}
-
 /// The lit cells at one distance from a point (the centre of a focus, usually).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Ring {
@@ -170,6 +159,7 @@ pub struct Ring {
     pub auxin: f32,
     pub cytokinin: f32,
     pub restraint: f32,
+    pub relay: f32,
 }
 
 /// The lit cells around `centre`, in `rings` rings one dividing radius wide. Only the cells that
@@ -188,6 +178,7 @@ pub fn profile(c: &Cells, centre: [f32; 3], rings: usize) -> Vec<Ring> {
         ring.auxin += c.h[i][0] / volume;
         ring.cytokinin += c.h[i][1] / volume;
         ring.restraint += c.h[i][2] / volume;
+        ring.relay += c.h[i][3] / volume;
     }
     for ring in &mut out {
         let n = ring.cells.max(1) as f32;
@@ -195,6 +186,7 @@ pub fn profile(c: &Cells, centre: [f32; 3], rings: usize) -> Vec<Ring> {
         ring.auxin /= n;
         ring.cytokinin /= n;
         ring.restraint /= n;
+        ring.relay /= n;
     }
     out
 }
@@ -443,7 +435,10 @@ mod tests {
             ck_production: 0.0,
             ck_light: 0.0,
             ck_decay: 0.0,
+            restraint_made: 0.0,
             restraint_decay: 0.0,
+            relay_made: 0.0,
+            relay_decay: 0.0,
             ..Params::default()
         };
         let drift = mass_drift(&mut judge(&p, 300, 300), 500)?;

@@ -6,6 +6,8 @@ pub const AUXIN: usize = 0;
 pub const CYTOKININ: usize = 1;
 /// Index of the restraint signal in a cell's hormones.
 pub const RESTRAINT: usize = 2;
+/// Index of the relay in a cell's hormones.
+pub const RELAY: usize = 3;
 
 use crate::shape::{Shape, sphere};
 
@@ -16,8 +18,8 @@ pub struct Cell {
     pub pr: [f32; 4],
     /// Ellipsoid and growth direction, see `shape`.
     pub shape: Shape,
-    /// Hormone amounts (auxin, cytokinin, restraint signal).
-    pub h: [f32; 3],
+    /// Hormone amounts (auxin, cytokinin, restraint signal, relay).
+    pub h: [f32; 4],
     /// Polarity of the auxin pumps (PIN): xyz is the side of the cell where they sit, its length
     /// (at most 1) how strongly they gather there. The fourth slot is not about the pumps: it
     /// keeps the light the cell received at its last step, for display only (no rule reads it).
@@ -33,7 +35,7 @@ pub struct Cells {
     pub count: usize,
     pub pr: Vec<[f32; 4]>,
     pub shape: Vec<Shape>,
-    pub h: Vec<[f32; 3]>,
+    pub h: Vec<[f32; 4]>,
     pub pin: Vec<[f32; 4]>,
     pub youth: Vec<f32>,
 }
@@ -45,7 +47,7 @@ impl Cells {
             count: 0,
             pr: vec![[0.0; 4]; capacity],
             shape: vec![sphere(1.0, [1.0, 0.0, 0.0]); capacity],
-            h: vec![[0.0; 3]; capacity],
+            h: vec![[0.0; 4]; capacity],
             pin: vec![[0.0; 4]; capacity],
             youth: vec![1.0; capacity],
         }
@@ -63,7 +65,7 @@ impl Cells {
             Cell {
                 pr: [0.0, 0.0, 0.0, p.r_div],
                 shape: sphere(p.r_div, a),
-                h: [hormone, 0.0, 0.0],
+                h: [hormone, 0.0, 0.0, 0.0],
                 pin: [0.0; 4],
                 youth: 1.0,
             },
@@ -104,7 +106,7 @@ impl Cells {
     }
 
     /// Hormone amounts of the living cells.
-    pub fn hormone(&self) -> &[[f32; 3]] {
+    pub fn hormone(&self) -> &[[f32; 4]] {
         &self.h[..self.count]
     }
 

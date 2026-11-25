@@ -67,16 +67,26 @@ pub struct Params {
     /// Auxin concentration that halves the push of cytokinin (the two hormones oppose each
     /// other: what counts is their ratio).
     pub ck_block: f32,
-    /// Restraint signal a cell young enough to divide makes per step, per unit of its volume (the
-    /// stem cells of a shoot tip make a small peptide, CLV3, that holds back the cells around
-    /// them; 0: none).
+    /// Relay a cell makes per step, per unit of its volume, when cytokinin calls at its fullest
+    /// (cytokinin does not keep a shoot cell young by itself: it switches on a protein, WUS, that
+    /// passes from cell to cell and does).
+    pub relay_made: f32,
+    /// Same as `diffusion`, for the relay.
+    pub relay_diffusion: f32,
+    /// Fraction of the relay lost per step.
+    pub relay_decay: f32,
+    /// Relay concentration that keeps a cell half young.
+    pub relay_half: f32,
+    /// Restraint signal a cell of the skin makes per step, per unit of its volume, when it holds
+    /// plenty of relay (the top cells of a shoot tip, told by the relay, make a small peptide,
+    /// CLV3, that goes back down and switches the relay off; 0: none). A cell is skin as far as
+    /// its neighbours all lie on one side of it.
     pub restraint_made: f32,
     /// Same as `diffusion`, for the restraint signal.
     pub restraint_diffusion: f32,
     /// Fraction of the restraint signal lost per step.
     pub restraint_decay: f32,
-    /// Restraint concentration at which a cell hears only half of what cytokinin calls for to
-    /// keep it young.
+    /// Restraint concentration at which a cell makes only half of the relay cytokinin calls for.
     pub restraint_half: f32,
     /// Relative growth per step along the growth direction, for a cell holding just the right
     /// amount of auxin (this growth adds volume, like water taken up).
@@ -93,8 +103,9 @@ pub struct Params {
     /// cells mature, or turn young again).
     pub youth_rate: f32,
     /// Auxin concentration that keeps a cell half young: more keeps it young, less lets it mature.
-    /// Cytokinin keeps a cell young too where auxin is scarce (`ck_half`, `ck_block`): the two
-    /// hormones swap roles between the root tip and the shoot tip.
+    /// The relay keeps a cell young too (`relay_half`), and it is made where cytokinin gathers
+    /// while auxin is scarce (`ck_half`, `ck_block`): the two hormones swap roles between the
+    /// root tip and the shoot tip.
     pub youth_half: f32,
     /// Longest half-length of a cell, in units of `r_div`: a cell that reaches it divides.
     pub max_half_length: f32,
@@ -155,6 +166,10 @@ impl Params {
             "ck_decay" => &mut self.ck_decay,
             "ck_half" => &mut self.ck_half,
             "ck_block" => &mut self.ck_block,
+            "relay_made" => &mut self.relay_made,
+            "relay_diffusion" => &mut self.relay_diffusion,
+            "relay_decay" => &mut self.relay_decay,
+            "relay_half" => &mut self.relay_half,
             "restraint_made" => &mut self.restraint_made,
             "restraint_diffusion" => &mut self.restraint_diffusion,
             "restraint_decay" => &mut self.restraint_decay,
@@ -201,16 +216,23 @@ impl Default for Params {
             // Off in the default genome: measured on 2026-11-25, cytokinin that only diffuses
             // makes no second pole (see docs/contexte/Feuille de route.md).
             ck_production: 0.0,
-            ck_light: 0.03,
+            // Cytokinin fades within a few cells of the lit skin that makes it: it tells a cell how
+            // deep it lies (measured 2026-11-25: fading ten times slower, it was the same all over
+            // the stem and the relay switched on everywhere).
+            ck_light: 0.3,
             ck_diffusion: 0.05,
-            ck_decay: 0.001,
+            ck_decay: 0.01,
             ck_half: 1.0,
             ck_block: 1.0,
-            // Off in the default genome: measured on 2026-11-25, this signal alone does not hold
-            // the size of the shoot tip (see docs/contexte/Feuille de route.md).
-            restraint_made: 0.0,
+            relay_made: 0.02,
+            relay_diffusion: 0.02,
+            relay_decay: 0.01,
+            relay_half: 1.0,
+            // BALANCE: sets the size of the shoot tip. Measured 2026-11-25: 1400 cells and still
+            // swelling at 0, 500 to 700 at 0.015, 200 to 450 here, 40 to 130 at 0.06.
+            restraint_made: 0.03,
             restraint_diffusion: 0.05,
-            restraint_decay: 0.01,
+            restraint_decay: 0.03,
             restraint_half: 1.0,
             // Off in the default genome: cells stay round.
             elong: 0.0,

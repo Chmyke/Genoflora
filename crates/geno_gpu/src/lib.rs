@@ -83,9 +83,9 @@ pub struct GpuSim {
     scan_div: Scan,
 }
 
-/// Size of the uniform block: 48 four-byte fields.
-const PARAMS_BYTES: usize = 192;
-/// Bytes of one cell's hormones on the GPU: a `vec3<f32>` takes the room of four floats.
+/// Size of the uniform block: 52 four-byte fields.
+const PARAMS_BYTES: usize = 208;
+/// Bytes of one cell's hormones.
 const HORMONE_BYTES: usize = 16;
 
 /// The current cells, as GPU buffers (layouts in `shaders/common.wgsl`). `state` starts with
@@ -152,6 +152,10 @@ fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
         f(p.restraint_diffusion),
         f(p.restraint_decay),
         f(p.restraint_half),
+        f(p.relay_made),
+        f(p.relay_diffusion),
+        f(p.relay_decay),
+        f(p.relay_half),
     ]
     .concat()
 }
@@ -237,7 +241,7 @@ impl GpuSim {
         let sidx = buffer("sorted idx", capacity * 4, U::STORAGE);
         let spos = buffer("sorted pos", capacity * 16, U::STORAGE);
         let sshape = buffer("sorted shape", capacity * 48, U::STORAGE);
-        let shid = buffer("sorted h+id", capacity * 16, U::STORAGE);
+        let shid = buffer("sorted h+id", capacity * 32, U::STORAGE);
         // Grid scan: one extra entry so `offsets[cell + 1]` exists for the last cell.
         let n0 = round_up(grid_cells + 1, 256);
         let counts = buffer("counts", n0 * 4, U::STORAGE);
@@ -578,10 +582,7 @@ impl GpuSim {
         let mut cells = Cells::empty(self.capacity);
         cells.count = count;
         cells.pr[..count].copy_from_slice(bytemuck::cast_slice(&pr));
-        let padded: &[[f32; 4]] = bytemuck::cast_slice(&h);
-        for (kept, read) in cells.h.iter_mut().zip(padded) {
-            *kept = [read[0], read[1], read[2]];
-        }
+        cells.h[..count].copy_from_slice(bytemuck::cast_slice(&h));
         cells.shape[..count].copy_from_slice(bytemuck::cast_slice(&shape));
         cells.pin[..count].copy_from_slice(bytemuck::cast_slice(&pin));
         cells.youth[..count].copy_from_slice(bytemuck::cast_slice(&youth));
@@ -594,9 +595,8 @@ impl GpuSim {
         let n = cells.count;
         self.queue
             .write_buffer(&self.pos[self.cur], 0, bytemuck::cast_slice(cells.alive()));
-        let padded: Vec<[f32; 4]> = cells.hormone().iter().map(|h| [h[0], h[1], h[2], 0.0]).collect();
         self.queue
-            .write_buffer(&self.hh[self.cur], 0, bytemuck::cast_slice(&padded));
+            .write_buffer(&self.hh[self.cur], 0, bytemuck::cast_slice(cells.hormone()));
         self.queue
             .write_buffer(&self.shape[self.cur], 0, bytemuck::cast_slice(cells.shapes()));
         self.queue

@@ -2,7 +2,7 @@
 // an insertion sort by id so the neighbour order (hence every float sum) is deterministic.
 @group(0) @binding(1) var<storage, read> S: State;
 @group(0) @binding(2) var<storage, read> pos: array<vec4<f32>>;
-@group(0) @binding(3) var<storage, read> hh: array<vec3<f32>>;
+@group(0) @binding(3) var<storage, read> hh: array<vec4<f32>>;
 @group(0) @binding(4) var<storage, read_write> counts: array<atomic<u32>>;
 @group(0) @binding(5) var<storage, read> offsets: array<u32>;
 @group(0) @binding(6) var<storage, read_write> sidx: array<u32>;

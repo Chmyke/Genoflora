@@ -12,10 +12,11 @@ struct Params {
     soil_hardness: f32, light_production: f32, light_depth: f32, youth_rate: f32,
     youth_half: f32, ck_light: f32, shade: f32, squeeze_hold: f32,
     restraint_made: f32, restraint_diffusion: f32, restraint_decay: f32, restraint_half: f32,
+    relay_made: f32, relay_diffusion: f32, relay_decay: f32, relay_half: f32,
 }
 struct State { count: u32, epoch: u32, pad0: u32, pad1: u32 }
-// h = hormone amounts (auxin, cytokinin, restraint signal); the id fills the fourth slot.
-struct Tagged { h: vec3<f32>, id: u32 }
+// h = hormone amounts (auxin, cytokinin, restraint signal, relay). 32 bytes with its padding.
+struct Tagged { h: vec4<f32>, id: u32 }
 
 @group(0) @binding(0) var<uniform> P: Params;
 
