@@ -78,13 +78,15 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
             }
         }
     }
-    let made = (P.production + P.light_production * light(pi.xyz)) * vi;
+    let lit = light(pi.xyz);
+    let made = (P.production + P.light_production * lit) * vi;
     let auxin = hi.x + P.diffusion * spread.x + P.polar * pumped + made - P.decay * hi.x;
-    let cytokinin = hi.y + P.ck_diffusion * spread.y + P.ck_production * hi.x - P.ck_decay * hi.y;
+    let cytokinin = hi.y + P.ck_diffusion * spread.y + P.ck_production * hi.x + P.ck_light * lit * vi - P.ck_decay * hi.y;
     hh_out[i] = vec2<f32>(auxin, cytokinin);
     let ca = hi.x / vi;
     let cc = hi.y / vi;
-    let drive = ca / (P.half_sat + ca) + (cc / (P.ck_half + cc)) * (P.ck_block / (P.ck_block + ca));
+    let ck_push = (cc / (P.ck_half + cc)) * (P.ck_block / (P.ck_block + ca));
+    let drive = ca / (P.half_sat + ca) + ck_push;
     // Soil: solid friction on the move, and push-back on walls pressing on it (mirrors finish).
     let soil = soil_share(pi.xyz);
     var exposed = 1.0;
@@ -111,5 +113,6 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     if (len > 1.0) { keep = 1.0 / len; }
     pin_out[i] = vec4<f32>(n * keep, 0.0);
     // Youth: toward what the auxin calls for (mirrors finish).
-    youth_out[i] = youth[i] + P.youth_rate * (ca / (P.youth_half + ca) - youth[i]);
+    let calls = min(ca / (P.youth_half + ca) + ck_push, 1.0);
+    youth_out[i] = youth[i] + P.youth_rate * (calls - youth[i]);
 }

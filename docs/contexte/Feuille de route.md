@@ -297,6 +297,45 @@ Mesuré sur la carte (génome à cellules allongées, lumière, sol, 20 000 à 3
   l'auxine vers le haut par l'épiderme puis vers le centre (« fontaine inversée »). Deuxième cause
   manquante désignée.
 
-Prochaine étape, à trancher : allumer ou non la maturation par défaut ; puis l'une des deux causes
-manquantes désignées par la mesure : une pointe de tige qui se tient elle-même (WUS/CLV3,
-cytokinine), ou un maximum d'auxine étroit à la pointe de la racine (fontaine inversée).
+Cytokinine de lumière (2026-11-25, choix laissé à Claude par Mickaël : « fais ce qui te semble le
+plus pertinent »). Correction d'abord : Claude avait dit que la lumière ne garde pas la pointe de
+tige jeune dans le réel. C'est inexact : dans le noir la pointe de tige reste endormie, et la
+lumière la réveille, mais par la cytokinine (Pfeiffer et al. 2016, eLife, vérifié). D'où deux
+ajouts, sur la cytokinine déjà présente :
+
+- une cellule éclairée fabrique de la cytokinine (`ck_light`, par unité de volume en pleine
+  lumière) ;
+- la cytokinine garde une cellule jeune là où l'auxine est rare (même réponse que pour la
+  croissance : `ck_half`, `ck_block`). Les deux hormones échangent donc leurs rôles entre la
+  pointe de racine (auxine) et la pointe de tige (cytokinine), comme dans le réel.
+
+Éteinte dans le génome par défaut (`ck_light = 0`).
+
+Mesuré sur la carte (génome à cellules allongées, maturation 0,01 / 3, 25 000 à 30 000 cellules ;
+`docs/images/Cytokinine de lumière, un cal.png`) : c'est tout ou rien.
+
+| Cytokinine de lumière | Auxine qui la bloque | Cellules à l'air | Forme |
+|---|---|---|---|
+| 0,001 à 0,03 | 0,1 | 3 à 45 | le haut mûrit, rien ne sort |
+| 0,001 à 0,003 | 1 | 3 à 122 | idem |
+| 0,01 | 0,3 | 46 | idem |
+| 0,01 | 1 | 18 500 sur 30 000 | une boule (hauteur 31, aussi large que haute) |
+
+Quand elle est assez forte, toutes les cellules éclairées restent jeunes et le haut jaillit en
+boule : un cal, exactement ce que donnent les cultures de Skoog et Miller avec beaucoup de
+cytokinine. Ce n'est pas une tige : rien ne réserve la jeunesse à une pointe. Cause manquante
+désignée : dans une vraie pointe de tige, les cellules souches retiennent leurs voisines (elles
+émettent CLV3, qui éteint WUS autour) ; le foyer reste petit et le reste mûrit en tige. Autre
+écart noté : toutes les cellules à l'air reçoivent la pleine lumière, sans ombre des cellules
+du dessus. Un test enregistre la boule
+(`light_made_cytokinin_wakes_the_top_into_a_ball_not_a_shoot`) et doit casser le jour où une
+pointe se tiendra.
+
+Sonde : un essai qui grossit très vite dépasse la capacité entre deux relevés et la carte
+abandonne (« soumission refusée ») ; des relevés plus rapprochés l'évitent. La cause exacte dans
+le moteur reste à diagnostiquer.
+
+Prochaine étape : un foyer qui se tient lui-même à la pointe de tige (les cellules jeunes
+retiennent leurs voisines, WUS/CLV3), puis un maximum d'auxine étroit à la pointe de racine
+(fontaine inversée). La maturation et la cytokinine de lumière restent éteintes par défaut tant
+que la pointe ne se tient pas : allumées, la plante de référence serait soit enterrée, soit un cal.

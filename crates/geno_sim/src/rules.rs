@@ -99,14 +99,19 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     let (pi, s, hi) = (&me.pr, &me.shape, &me.h);
     let volume = pi[3] * pi[3] * pi[3];
     // Auxin is made everywhere, more where light reaches the cell.
-    let made = (p.production + p.light_production * soil::light(p, pi)) * volume;
+    let lit = soil::light(p, pi);
+    let made = (p.production + p.light_production * lit) * volume;
     let auxin = hi[0] + p.diffusion * g.spread[0] + p.polar * g.pumped + made - p.decay * hi[0];
-    // Cytokinin is made where auxin is, then wanders with no preferred direction.
-    let cytokinin = hi[1] + p.ck_diffusion * g.spread[1] + p.ck_production * hi[0] - p.ck_decay * hi[1];
+    // Cytokinin is made where auxin is and where light reaches the cell, then wanders with no
+    // preferred direction.
+    let cytokinin =
+        hi[1] + p.ck_diffusion * g.spread[1] + p.ck_production * hi[0] + p.ck_light * lit * volume
+            - p.ck_decay * hi[1];
     // Even growth, up to the dividing size: holding a lot of auxin, or holding cytokinin while
     // auxin is scarce.
     let (ca, cc) = (hi[0] / volume, hi[1] / volume);
-    let drive = ca / (p.half_sat + ca) + (cc / (p.ck_half + cc)) * (p.ck_block / (p.ck_block + ca));
+    let ck_push = (cc / (p.ck_half + cc)) * (p.ck_block / (p.ck_block + ca));
+    let drive = ca / (p.half_sat + ca) + ck_push;
     // The soil holds the cell, and pushes back on the walls that press on it rather than on other
     // cells: a cell surrounded evenly presses on no soil, a lone cell or the tip of a column does.
     let soil = soil::share(p, pi);
@@ -138,9 +143,10 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     let eps = p.elong * (ca / (p.e_half + ca)) * (p.e_block / (p.e_block + ca)) * room * slowed;
     let shape = with_dir(&grow_along(&grow_even(s, even / pi[3]), &a, eps), a);
     let pin = polarise(me, g, p, ca);
-    // A cell stays young where auxin gathers, matures where it is scarce, and turns young again
-    // if auxin comes back.
-    let youth = me.youth + p.youth_rate * (ca / (p.youth_half + ca) - me.youth);
+    // A cell stays young where auxin gathers (root tip), or where cytokinin gathers while auxin
+    // is scarce (shoot tip); it matures elsewhere, and turns young again if they come back.
+    let calls = (ca / (p.youth_half + ca) + ck_push).min(1.0);
+    let youth = me.youth + p.youth_rate * (calls - me.youth);
     Cell {
         pr: [
             pi[0] + held * g.disp[0],
@@ -414,6 +420,21 @@ mod tests {
             c.youth
         };
         assert!(after(1.0, 0.0, 1000) < 0.01);
+        // Cytokinin keeps a cell young too, but only where auxin is scarce.
+        let with_ck = |auxin: f32| {
+            let mut c = cell([0.0; 3], 1.0, [auxin, 50.0]);
+            for _ in 0..1000 {
+                c.youth = finish(&c, &Gathered::default(), &p).youth;
+            }
+            c.youth
+        };
+        assert!(with_ck(0.0) > 0.9);
+        assert!(
+            with_ck(0.3) < with_ck(0.0) - 0.3,
+            "{} {}",
+            with_ck(0.3),
+            with_ck(0.0)
+        );
         assert!(after(0.0, 50.0, 1000) > 0.9);
         // Slowly: the cell remembers what it was.
         assert!(after(1.0, 0.0, 10) > 0.85);
@@ -431,6 +452,18 @@ mod tests {
         divide(&mut cells, &p, 1);
         assert_eq!(cells.count, 2);
         assert_eq!(cells.youth[1], 0.8);
+    }
+
+    #[test]
+    fn a_lit_cell_makes_cytokinin() {
+        let p = Params {
+            ck_light: 0.01,
+            ..Params::default()
+        };
+        let made =
+            |height: f32| finish(&cell([0.0, height, 0.0], 1.0, [0.0; 2]), &Gathered::default(), &p).h[1];
+        assert!((made(p.surface + 3.0) - 0.01).abs() < 1e-6);
+        assert!(made(p.surface - 10.0) < 1e-6);
     }
 
     #[test]

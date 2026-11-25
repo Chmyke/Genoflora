@@ -54,6 +54,9 @@ pub struct Params {
     pub decay: f32,
     /// Cytokinin a cell makes per step, per unit of auxin it holds.
     pub ck_production: f32,
+    /// Cytokinin a cell makes per step, per unit of its volume, in full light (light wakes the
+    /// shoot tip through cytokinin, Pfeiffer et al. 2016).
+    pub ck_light: f32,
     /// Same as `diffusion`, for cytokinin.
     /// It has no preferred direction.
     pub ck_diffusion: f32,
@@ -75,6 +78,8 @@ pub struct Params {
     /// cells mature, or turn young again).
     pub youth_rate: f32,
     /// Auxin concentration that keeps a cell half young: more keeps it young, less lets it mature.
+    /// Cytokinin keeps a cell young too where auxin is scarce (`ck_half`, `ck_block`): the two
+    /// hormones swap roles between the root tip and the shoot tip.
     pub youth_half: f32,
     /// Longest half-length of a cell, in units of `r_div`: a cell that reaches it divides.
     pub max_half_length: f32,
@@ -120,6 +125,8 @@ impl Default for Params {
             // Off in the default genome: measured on 2026-11-25, cytokinin that only diffuses
             // makes no second pole (see docs/contexte/Feuille de route.md).
             ck_production: 0.0,
+            // Off in the default genome until measured.
+            ck_light: 0.0,
             ck_diffusion: 0.05,
             ck_decay: 0.001,
             ck_half: 1.0,

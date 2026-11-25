@@ -99,3 +99,49 @@ fn maturing_cells_make_the_root_grow_from_its_tip() -> Result<(), EngineError> {
     assert!(l.reach.0 >= 1.8 * c.reach.0, "{l:?} against {c:?}");
     Ok(())
 }
+
+// Light-made cytokinin keeps the cells young where auxin is scarce. Measured 2026-11-25: it is all
+// or nothing. Weak, the top still matures and stays buried; strong, every lit cell stays young and
+// the top bursts into a ball (a callus, as in Skoog and Miller's dishes), not a shoot: nothing
+// confines the young cells to a tip. This test records the ball; it is expected to break the day
+// a tip holds itself (in real plants, the stem cells hold back their neighbours: WUS/CLV3).
+#[test]
+fn light_made_cytokinin_wakes_the_top_into_a_ball_not_a_shoot() -> Result<(), EngineError> {
+    let p = Params {
+        youth_rate: 0.01,
+        youth_half: 3.0,
+        ck_light: 0.01,
+        ck_block: 1.0,
+        ..stretching()
+    };
+    let Some(cells) = grow(&p)? else {
+        return Ok(());
+    };
+    let air: Vec<_> = cells
+        .alive()
+        .iter()
+        .filter(|q| geno_sim::soil::share(&p, &q[..3]) < 0.5)
+        .collect();
+    assert!(
+        air.len() * 3 >= cells.count,
+        "{} of {} in the air",
+        air.len(),
+        cells.count
+    );
+    // As wide as it is tall: twice the spread across against the height.
+    let n = air.len() as f32;
+    let mean = [0, 2].map(|k| air.iter().map(|q| q[k]).sum::<f32>() / n);
+    let across = (air
+        .iter()
+        .map(|q| (q[0] - mean[0]).powi(2) + (q[2] - mean[1]).powi(2))
+        .sum::<f32>()
+        / n)
+        .sqrt();
+    let height = air.iter().map(|q| q[1]).fold(f32::MIN, f32::max) - p.surface;
+    eprintln!(
+        "aerial part: {} cells, height {height:.1}, spread across {across:.1}",
+        air.len()
+    );
+    assert!(height <= 3.0 * across, "height {height}, spread {across}");
+    Ok(())
+}

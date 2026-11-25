@@ -132,7 +132,7 @@ fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
         f(p.light_depth),
         f(p.youth_rate),
         f(p.youth_half),
-        u(0),
+        f(p.ck_light),
         u(0),
         u(0),
     ]
