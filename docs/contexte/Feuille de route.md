@@ -86,10 +86,20 @@ Ce qui a émergé, mesuré (`geno_sim::checks`, images dans `docs/images/`) :
 - La colonne suit la gravité quelle que soit sa direction ; sans perception du bas, la graine
   reste une boule.
 
-Ce qui n'a pas émergé : rien ne monte. Pas de tige. Les quatre capacités ne suffisent pas à
-faire deux pôles. Piste à valider avant de coder (souvenir, à revérifier) : dans une vraie
-plante, la pointe de la tige vit là où l'auxine est basse et où une seconde hormone, la
-cytokinine, venue de la racine, est haute.
+Ce qui n'a pas émergé : rien ne monte. Pas de tige.
+
+Essai d'une cinquième capacité, la cytokinine (2026-11-25, validée par Mickaël) : fabriquée là où
+il y a de l'auxine, elle diffuse sans direction, et fait grandir les cellules où l'auxine est
+rare (rapport cytokinine/auxine, Skoog et Miller 1957, revérifié). Résultat mesuré sur sept
+génomes : aucun second pôle. Faible, elle épaissit la racine ; forte, elle redonne une boule
+(allongement 1,15). Dans tous les cas la plante ne dépasse pas 10 rayons au-dessus de la graine.
+Raison probable : dans une vraie plante la cytokinine monte par la sève brute, aspirée par
+l'évaporation des feuilles ; ici elle ne fait que diffuser et reste près de la racine. La capacité
+reste dans le code, éteinte dans le génome par défaut (`ck_production = 0`).
+
+Pistes pour la tige, à valider avant de coder : des cellules qui s'allongent (la courbure vers le
+haut d'une vraie tige vient du flanc bas qui s'allonge plus) ; un milieu (sol en bas, air en
+haut) ; la lumière.
 
 Limites : cellules encore sphériques (elles ne s'allongent pas), pas de sol, pas de lumière.
 

@@ -9,15 +9,15 @@ use crate::params::{INV_CBRT2, Params};
 pub struct Gathered {
     /// Displacement from pushes and pulls.
     pub disp: [f32; 3],
-    /// Sum of hormone differences with the neighbours (passive diffusion).
-    pub spread: f32,
-    /// Hormone received from the neighbours above minus hormone handed to those below.
+    /// Sum of hormone differences with the neighbours (passive diffusion), per hormone.
+    pub spread: [f32; 2],
+    /// Auxin received from the neighbours above minus auxin handed to those below.
     pub fall: f32,
 }
 
 /// Contribution of neighbour `j` to cell `i` (gather form: each cell only writes itself).
 #[inline]
-pub fn interact(pi: &[f32; 4], hi: f32, pj: &[f32; 4], hj: f32, p: &Params, g: &mut Gathered) {
+pub fn interact(pi: &[f32; 4], hi: [f32; 2], pj: &[f32; 4], hj: [f32; 2], p: &Params, g: &mut Gathered) {
     let dv = [pi[0] - pj[0], pi[1] - pj[1], pi[2] - pj[2]];
     let d2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     let rs = pi[3] + pj[3];
@@ -32,23 +32,31 @@ pub fn interact(pi: &[f32; 4], hi: f32, pj: &[f32; 4], hj: f32, p: &Params, g: &
         g.disp[0] += coef * dv[0];
         g.disp[1] += coef * dv[1];
         g.disp[2] += coef * dv[2];
-        g.spread += hj - hi;
+        g.spread[0] += hj[0] - hi[0];
+        g.spread[1] += hj[1] - hi[1];
         // How much `i` sits above `j`, from -1 to 1. Both cells compute exact opposites, so what
         // one hands over is exactly what the other receives.
         let above = (dv[0] * p.gravity[0] + dv[1] * p.gravity[1] + dv[2] * p.gravity[2]) / -d;
-        g.fall += hj * (-above).max(0.0) - hi * above.max(0.0);
+        g.fall += hj[0] * (-above).max(0.0) - hi[0] * above.max(0.0);
     }
 }
 
 /// New state of cell `i` once every neighbour has been gathered.
 #[inline]
-pub fn finish(pi: &[f32; 4], hi: f32, g: &Gathered, p: &Params) -> ([f32; 4], f32) {
+pub fn finish(pi: &[f32; 4], hi: [f32; 2], g: &Gathered, p: &Params) -> ([f32; 4], [f32; 2]) {
     let volume = pi[3] * pi[3] * pi[3];
-    let h = hi + p.diffusion * g.spread + p.polar * g.fall + p.production * volume - p.decay * hi;
-    // The more hormone a cell holds for its size, the faster it grows, up to a ceiling.
-    let conc = hi / volume;
-    let r = (pi[3] + p.growth * (conc / (p.half_sat + conc))).min(p.r_div);
-    ([pi[0] + g.disp[0], pi[1] + g.disp[1], pi[2] + g.disp[2], r], h)
+    let auxin =
+        hi[0] + p.diffusion * g.spread[0] + p.polar * g.fall + p.production * volume - p.decay * hi[0];
+    // Cytokinin is made where auxin is, then wanders with no preferred direction.
+    let cytokinin = hi[1] + p.ck_diffusion * g.spread[1] + p.ck_production * hi[0] - p.ck_decay * hi[1];
+    // Two ways to grow: holding a lot of auxin, or holding cytokinin while auxin is scarce.
+    let (ca, cc) = (hi[0] / volume, hi[1] / volume);
+    let drive = ca / (p.half_sat + ca) + (cc / (p.ck_half + cc)) * (p.ck_block / (p.ck_block + ca));
+    let r = (pi[3] + p.growth * drive.min(1.0)).min(p.r_div);
+    (
+        [pi[0] + g.disp[0], pi[1] + g.disp[1], pi[2] + g.disp[2], r],
+        [auxin, cytokinin],
+    )
 }
 
 /// One division round, in index order. Volume and hormone are split evenly between the two
@@ -69,7 +77,7 @@ pub fn divide(cells: &mut Cells, p: &Params, epoch: u32) {
             let m = cells.pr[i];
             let r = m[3] * INV_CBRT2;
             let o = a.map(|c| c * (0.5 * r));
-            let h = cells.h[i] * 0.5;
+            let h = cells.h[i].map(|v| v * 0.5);
             cells.pr[i] = [m[0] - o[0], m[1] - o[1], m[2] - o[2], r];
             cells.pr[j] = [m[0] + o[0], m[1] + o[1], m[2] + o[2], r];
             cells.h[i] = h;
@@ -88,7 +96,14 @@ mod tests {
         let p = Params::default();
         let pull = |d: f32| {
             let mut g = Gathered::default();
-            interact(&[d, 0.0, 0.0, 1.0], 0.0, &[0.0, 0.0, 0.0, 1.0], 0.0, &p, &mut g);
+            interact(
+                &[d, 0.0, 0.0, 1.0],
+                [0.0; 2],
+                &[0.0, 0.0, 0.0, 1.0],
+                [0.0; 2],
+                &p,
+                &mut g,
+            );
             g.disp[0]
         };
         // Contact is at d = 2, the reach at d = 2.4: no jump on either side.
@@ -99,7 +114,7 @@ mod tests {
     }
 
     #[test]
-    fn hormone_falls_to_the_cell_below_and_none_is_lost() {
+    fn auxin_falls_to_the_cell_below_and_none_is_lost() {
         let p = Params {
             diffusion: 0.0,
             production: 0.0,
@@ -108,9 +123,12 @@ mod tests {
         };
         let (top, bottom) = ([0.0, 1.0, 0.0, 1.0], [0.0, -1.0, 0.0, 1.0]);
         let (mut a, mut b) = (Gathered::default(), Gathered::default());
-        interact(&top, 1.0, &bottom, 1.0, &p, &mut a);
-        interact(&bottom, 1.0, &top, 1.0, &p, &mut b);
-        let (ha, hb): (f32, f32) = (finish(&top, 1.0, &a, &p).1, finish(&bottom, 1.0, &b, &p).1);
+        interact(&top, [1.0, 0.0], &bottom, [1.0, 0.0], &p, &mut a);
+        interact(&bottom, [1.0, 0.0], &top, [1.0, 0.0], &p, &mut b);
+        let (ha, hb) = (
+            finish(&top, [1.0, 0.0], &a, &p).1[0],
+            finish(&bottom, [1.0, 0.0], &b, &p).1[0],
+        );
         assert!(ha < 1.0 && hb > 1.0, "top {ha}, bottom {hb}");
         assert!((ha + hb - 2.0).abs() < 1e-6);
     }
@@ -119,8 +137,19 @@ mod tests {
     fn a_cell_without_hormone_does_not_grow() {
         let p = Params::default();
         let cell = [0.0, 0.0, 0.0, 0.9];
-        assert_eq!(finish(&cell, 0.0, &Gathered::default(), &p).0[3], 0.9);
-        assert!(finish(&cell, 1.0, &Gathered::default(), &p).0[3] > 0.9);
+        let grown = |h: [f32; 2]| finish(&cell, h, &Gathered::default(), &p).0[3];
+        assert_eq!(grown([0.0, 0.0]), 0.9);
+        assert!(grown([1.0, 0.0]) > 0.9);
+    }
+
+    #[test]
+    fn cytokinin_makes_a_cell_grow_only_where_auxin_is_scarce() {
+        let p = Params::default();
+        let cell = [0.0, 0.0, 0.0, 0.9];
+        let grown = |h: [f32; 2]| finish(&cell, h, &Gathered::default(), &p).0[3] - 0.9;
+        assert!(grown([0.0, 1.0]) > 0.0);
+        // With plenty of auxin, the same cytokinin adds almost nothing.
+        assert!(grown([5.0, 1.0]) - grown([5.0, 0.0]) < 0.1 * grown([0.0, 1.0]));
     }
 
     #[test]

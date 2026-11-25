@@ -35,7 +35,7 @@ pub fn lattice(n: usize, capacity: usize, p: &Params) -> Cells {
             q[2] as f32 * SPACING + jitter(2),
             p.r_div * (0.8 + 0.2 * unit(hash(p.seed, id, 3))),
         ];
-        cells.h[i] = unit(hash(p.seed, id, 4));
+        cells.h[i] = [unit(hash(p.seed, id, 4)), unit(hash(p.seed, id, 5))];
     }
     cells
 }
@@ -50,9 +50,12 @@ pub fn run(e: &mut dyn Engine, steps: u32, divide_every: Option<u32>) {
     }
 }
 
-/// Total hormone.
+/// Total hormone, both kinds together.
 pub fn mass(c: &Cells) -> f64 {
-    c.hormone().iter().map(|&h| f64::from(h)).sum()
+    c.hormone()
+        .iter()
+        .map(|h| f64::from(h[0]) + f64::from(h[1]))
+        .sum()
 }
 
 /// Total cell volume, up to the constant 4/3 pi.
@@ -167,10 +170,12 @@ pub struct Lie {
     /// Spread of the cells along the direction divided by their spread across it:
     /// 1 for a ball, more for a column.
     pub elongation: f64,
-    /// Mean hormone concentration of the tenth of the cells furthest along the direction...
+    /// Mean auxin concentration of the tenth of the cells furthest along the direction...
     pub front: f64,
     /// ...and of the tenth furthest against it.
     pub back: f64,
+    /// Same two means for cytokinin: (front, back).
+    pub cytokinin: (f64, f64),
     /// Furthest reach of the tissue along the direction and against it, from the origin
     /// (where a seed starts).
     pub reach: (f64, f64),
@@ -182,22 +187,27 @@ pub fn lie(c: &Cells, axis: [f32; 3]) -> Lie {
     let axis = axis.map(f64::from);
     let centre = [0, 1, 2].map(|k| c.alive().iter().map(|q| f64::from(q[k])).sum::<f64>() / n);
     let (mut along2, mut all2) = (0.0f64, 0.0f64);
-    let mut heights: Vec<(f64, f64)> = Vec::with_capacity(c.count);
-    for (q, &h) in c.alive().iter().zip(c.hormone()) {
+    let mut heights: Vec<(f64, f64, f64)> = Vec::with_capacity(c.count);
+    for (q, h) in c.alive().iter().zip(c.hormone()) {
         let d = [0, 1, 2].map(|k| f64::from(q[k]) - centre[k]);
         let a = d[0] * axis[0] + d[1] * axis[1] + d[2] * axis[2];
         along2 += a * a;
         all2 += d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
         let from_origin = (0..3).map(|k| f64::from(q[k]) * axis[k]).sum::<f64>();
-        heights.push((from_origin, f64::from(h) / f64::from(q[3]).powi(3)));
+        let volume = f64::from(q[3]).powi(3);
+        heights.push((from_origin, f64::from(h[0]) / volume, f64::from(h[1]) / volume));
     }
     heights.sort_by(|a, b| a.0.total_cmp(&b.0));
     let tenth = (c.count / 10).max(1).min(heights.len());
-    let mean = |part: &[(f64, f64)]| part.iter().map(|v| v.1).sum::<f64>() / part.len().max(1) as f64;
+    let mean = |part: &[(f64, f64, f64)], ck: bool| {
+        part.iter().map(|v| if ck { v.2 } else { v.1 }).sum::<f64>() / part.len().max(1) as f64
+    };
+    let (front, back) = (&heights[heights.len() - tenth..], &heights[..tenth]);
     Lie {
         elongation: (along2 / ((all2 - along2) / 2.0).max(1e-12)).sqrt(),
-        front: mean(&heights[heights.len() - tenth..]),
-        back: mean(&heights[..tenth]),
+        front: mean(front, false),
+        back: mean(back, false),
+        cytokinin: (mean(front, true), mean(back, true)),
         reach: (
             heights.last().map_or(0.0, |v| v.0),
             -heights.first().map_or(0.0, |v| v.0),
@@ -218,6 +228,8 @@ mod tests {
         let p = Params {
             production: 0.0,
             decay: 0.0,
+            ck_production: 0.0,
+            ck_decay: 0.0,
             ..Params::default()
         };
         let drift = mass_drift(&mut judge(&p, 300, 300), 500)?;

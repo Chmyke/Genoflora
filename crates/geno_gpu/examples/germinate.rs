@@ -1,4 +1,4 @@
-//! Probe: grows one seed cell on the GPU and writes snapshots as CSV (x,y,z,r,h per line,
+//! Probe: grows one seed cell on the GPU and writes snapshots as CSV (x,y,z,r,auxin,cytokinin per line,
 //! one file per snapshot) so that what emerges can be measured and drawn.
 //! Usage: cargo run --release -p geno_gpu --example germinate -- <out dir> <steps> <snapshots>
 //!        [polar=0.05] [half_sat=4] [production=..] [decay=..] [diffusion=..] [max=50000]
@@ -24,6 +24,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "production" => p.production = value.parse()?,
             "decay" => p.decay = value.parse()?,
             "diffusion" => p.diffusion = value.parse()?,
+            "ck_production" => p.ck_production = value.parse()?,
+            "ck_diffusion" => p.ck_diffusion = value.parse()?,
+            "ck_decay" => p.ck_decay = value.parse()?,
+            "ck_half" => p.ck_half = value.parse()?,
+            "ck_block" => p.ck_block = value.parse()?,
             "max" => max = value.parse()?,
             _ => return Err(format!("unknown parameter {key}").into()),
         }
@@ -36,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let cells = sim.snapshot()?;
         let mut text = String::new();
         for (q, h) in cells.alive().iter().zip(cells.hormone()) {
-            writeln!(text, "{},{},{},{},{}", q[0], q[1], q[2], q[3], h)
+            writeln!(text, "{},{},{},{},{},{}", q[0], q[1], q[2], q[3], h[0], h[1])
                 .map_err(|e| EngineError(e.to_string()))?;
         }
         std::fs::write(format!("{dir}/{shot:04}.csv"), text)?;

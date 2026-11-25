@@ -2,7 +2,7 @@
 // an insertion sort by id so the neighbour order (hence every float sum) is deterministic.
 @group(0) @binding(1) var<storage, read> S: State;
 @group(0) @binding(2) var<storage, read> pos: array<vec4<f32>>;
-@group(0) @binding(3) var<storage, read> hh: array<f32>;
+@group(0) @binding(3) var<storage, read> hh: array<vec2<f32>>;
 @group(0) @binding(4) var<storage, read_write> counts: array<atomic<u32>>;
 @group(0) @binding(5) var<storage, read> offsets: array<u32>;
 @group(0) @binding(6) var<storage, read_write> sidx: array<u32>;
@@ -46,6 +46,6 @@ fn sort_cells(@builtin(global_invocation_id) g: vec3<u32>) {
     for (var k = s; k < e; k++) {
         let i = sidx[k];
         spos[k] = pos[i];
-        shid[k] = Tagged(hh[i], i);
+        shid[k] = Tagged(hh[i], i, 0u);
     }
 }

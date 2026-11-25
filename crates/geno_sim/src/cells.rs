@@ -1,13 +1,18 @@
 //! Cell storage, as a struct of arrays (the layout the GPU engine uses too).
 
+/// Index of auxin in a cell's hormones.
+pub const AUXIN: usize = 0;
+/// Index of cytokinin in a cell's hormones.
+pub const CYTOKININ: usize = 1;
+
 /// A cell's index is its stable identifier (cells never die yet).
-/// `pr[i]` = position xyz + radius, `h[i]` = hormone amount. Vectors are `capacity` long;
+/// `pr[i]` = position xyz + radius, `h[i]` = hormone amounts (auxin, cytokinin). Vectors are `capacity` long;
 /// only the first `count` entries are alive.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cells {
     pub count: usize,
     pub pr: Vec<[f32; 4]>,
-    pub h: Vec<f32>,
+    pub h: Vec<[f32; 2]>,
 }
 
 impl Cells {
@@ -16,7 +21,7 @@ impl Cells {
         Self {
             count: 0,
             pr: vec![[0.0; 4]; capacity],
-            h: vec![0.0; capacity],
+            h: vec![[0.0; 2]; capacity],
         }
     }
 
@@ -25,7 +30,7 @@ impl Cells {
         let mut cells = Self::empty(capacity.max(1));
         cells.count = 1;
         cells.pr[0] = [0.0, 0.0, 0.0, radius];
-        cells.h[0] = hormone;
+        cells.h[0] = [hormone, 0.0];
         cells
     }
 
@@ -39,7 +44,7 @@ impl Cells {
     }
 
     /// Hormone amounts of the living cells.
-    pub fn hormone(&self) -> &[f32] {
+    pub fn hormone(&self) -> &[[f32; 2]] {
         &self.h[..self.count]
     }
 }

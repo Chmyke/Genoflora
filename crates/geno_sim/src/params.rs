@@ -20,7 +20,7 @@ pub struct Params {
     pub mob_adh: f32,
     /// Adhesion and diffusion range, as a factor of the sum of the two radii.
     pub reach: f32,
-    /// Hormone exchanged per step with each neighbour, per unit of difference.
+    /// Auxin exchanged per step with each neighbour, per unit of difference.
     pub diffusion: f32,
     /// Share of its hormone a cell hands, per step, to a neighbour lying straight below it
     /// (polar transport: the heavy grains of the cell settle on its lower side and point the way).
@@ -29,6 +29,18 @@ pub struct Params {
     pub production: f32,
     /// Fraction of hormone lost per step.
     pub decay: f32,
+    /// Cytokinin a cell makes per step, per unit of auxin it holds.
+    pub ck_production: f32,
+    /// Cytokinin exchanged per step with each neighbour, per unit of difference. It has no
+    /// preferred direction.
+    pub ck_diffusion: f32,
+    /// Fraction of cytokinin lost per step.
+    pub ck_decay: f32,
+    /// Cytokinin concentration at which its push on growth is half of its maximum.
+    pub ck_half: f32,
+    /// Auxin concentration that halves the push of cytokinin (the two hormones oppose each
+    /// other: what counts is their ratio).
+    pub ck_block: f32,
     /// Divisions are evaluated every `divide_every` steps.
     pub divide_every: u32,
     /// Direction in which heavy things fall (unit vector). Part of the environment, not of the cell.
@@ -49,6 +61,13 @@ impl Default for Params {
             polar: 0.02,
             production: 0.001,
             decay: 0.001,
+            // Off in the default genome: measured on 2026-11-25, cytokinin that only diffuses
+            // makes no second pole (see docs/contexte/Feuille de route.md).
+            ck_production: 0.0,
+            ck_diffusion: 0.05,
+            ck_decay: 0.001,
+            ck_half: 1.0,
+            ck_block: 0.1,
             divide_every: 20,
             gravity: [0.0, -1.0, 0.0],
         }

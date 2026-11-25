@@ -65,6 +65,8 @@ fn diffusion_conserves_the_hormone() -> Result<(), EngineError> {
         let p = Params {
             production: 0.0,
             decay: 0.0,
+            ck_production: 0.0,
+            ck_decay: 0.0,
             ..Params::default()
         };
         let drift = mass_drift(&mut engine(&p, 1000, 1000, adapter)?, 1000)?;
@@ -117,9 +119,11 @@ fn same_inputs_same_bits_on_the_same_machine() -> Result<(), EngineError> {
 #[test]
 fn a_seed_germinates_like_on_the_judge() -> Result<(), EngineError> {
     on_each_adapter(|adapter| {
+        // Cytokinin switched on, so the judge and the shaders are compared on both hormones.
         let p = Params {
             half_sat: 10.0,
             polar: 0.1,
+            ck_production: 0.0001,
             ..Params::default()
         };
         let start = geno_sim::Cells::seed(256, p.r_div, 1.0);

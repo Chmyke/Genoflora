@@ -14,6 +14,8 @@ use wgpu::{Buffer, BufferUsages as U, ComputePipeline};
 const COMMON: &str = include_str!("../shaders/common.wgsl");
 /// Queued steps are handed to the GPU in batches of this size, so the command list stays short.
 const SUBMIT_EVERY: u32 = 16;
+/// Longest wait for the GPU before giving up: a stuck device must fail loudly, never hang.
+const GPU_PATIENCE: std::time::Duration = std::time::Duration::from_secs(120);
 
 /// Which adapter runs the shaders.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -98,6 +100,14 @@ fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
         f(p.gravity[1]),
         f(p.gravity[2]),
         f(p.half_sat),
+        f(p.ck_production),
+        f(p.ck_diffusion),
+        f(p.ck_decay),
+        f(p.ck_half),
+        f(p.ck_block),
+        u(0),
+        u(0),
+        u(0),
     ]
     .concat()
 }
@@ -142,17 +152,17 @@ impl GpuSim {
             buffer("pos0", capacity * 16, data),
             buffer("pos1", capacity * 16, data),
         ];
-        let hh = [buffer("h0", capacity * 4, data), buffer("h1", capacity * 4, data)];
+        let hh = [buffer("h0", capacity * 8, data), buffer("h1", capacity * 8, data)];
         let state = buffer("state", 16, data);
         let indirect = buffer("indirect", 16, U::STORAGE | U::INDIRECT | U::COPY_DST);
-        let params = buffer("params", 80, U::UNIFORM | U::COPY_DST);
+        let params = buffer("params", 112, U::UNIFORM | U::COPY_DST);
         let stage = U::MAP_READ | U::COPY_DST;
         let stage_pos = buffer("stage pos", capacity * 16, stage);
-        let stage_hh = buffer("stage h", capacity * 4, stage);
+        let stage_hh = buffer("stage h", capacity * 8, stage);
         let stage_state = buffer("stage state", 16, stage);
         let sidx = buffer("sorted idx", capacity * 4, U::STORAGE);
         let spos = buffer("sorted pos", capacity * 16, U::STORAGE);
-        let shid = buffer("sorted h+id", capacity * 8, U::STORAGE);
+        let shid = buffer("sorted h+id", capacity * 16, U::STORAGE);
         // Grid scan: one extra entry so `offsets[cell + 1]` exists for the last cell.
         let n0 = round_up(grid_cells + 1, 256);
         let counts = buffer("counts", n0 * 4, U::STORAGE);
@@ -377,7 +387,7 @@ impl GpuSim {
             self.device
                 .poll(wgpu::PollType::Wait {
                     submission_index: Some(index),
-                    timeout: None,
+                    timeout: Some(GPU_PATIENCE),
                 })
                 .map_err(|e| fail("GPU wait failed", e))?;
         }
@@ -400,7 +410,7 @@ impl GpuSim {
         self.device
             .poll(wgpu::PollType::Wait {
                 submission_index: Some(index),
-                timeout: None,
+                timeout: Some(GPU_PATIENCE),
             })
             .map_err(|e| fail("GPU wait failed", e))?;
         receiver
@@ -428,7 +438,7 @@ impl GpuSim {
         self.flush()?;
         let count = count.min(self.capacity);
         let pr = self.read(&self.pos[self.cur], &self.stage_pos, count * 16)?;
-        let h = self.read(&self.hh[self.cur], &self.stage_hh, count * 4)?;
+        let h = self.read(&self.hh[self.cur], &self.stage_hh, count * 8)?;
         let mut cells = Cells::empty(self.capacity);
         cells.count = count;
         cells.pr[..count].copy_from_slice(bytemuck::cast_slice(&pr));

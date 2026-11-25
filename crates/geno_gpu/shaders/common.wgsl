@@ -5,9 +5,12 @@ struct Params {
     production: f32, decay: f32, growth: f32, r_div: f32,
     inv_cbrt2: f32, seed: u32, grid_cells: u32, polar: f32,
     gx: f32, gy: f32, gz: f32, half_sat: f32,
+    ck_production: f32, ck_diffusion: f32, ck_decay: f32, ck_half: f32,
+    ck_block: f32, pad0: u32, pad1: u32, pad2: u32,
 }
 struct State { count: u32, epoch: u32, pad0: u32, pad1: u32 }
-struct Tagged { h: f32, id: u32 }
+// h = hormone amounts (auxin, cytokinin).
+struct Tagged { h: vec2<f32>, id: u32, pad: u32 }
 
 @group(0) @binding(0) var<uniform> P: Params;
 
