@@ -410,6 +410,8 @@ mod tests {
     fn a_cell_matures_without_auxin_and_turns_young_again_with_it() {
         let p = Params {
             youth_rate: 0.01,
+            youth_half: 1.0,
+            ck_block: 0.1,
             ..Params::default()
         };
         let after = |youth: f32, auxin: f32, steps: u32| {
@@ -506,7 +508,10 @@ mod tests {
 
     #[test]
     fn cytokinin_makes_a_cell_grow_only_where_auxin_is_scarce() {
-        let p = Params::default();
+        let p = Params {
+            ck_block: 0.1,
+            ..Params::default()
+        };
         let grown = |h: [f32; 2]| finish(&cell([0.0; 3], 0.9, h), &Gathered::default(), &p).pr[3] - 0.9;
         assert!(grown([0.0, 1.0]) > 0.0);
         // With plenty of auxin, the same cytokinin adds almost nothing.

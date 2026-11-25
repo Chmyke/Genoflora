@@ -109,6 +109,7 @@ fn diffusion_conserves_the_hormone() -> Result<(), EngineError> {
             light_production: 0.0,
             decay: 0.0,
             ck_production: 0.0,
+            ck_light: 0.0,
             ck_decay: 0.0,
             ..Params::default()
         };
@@ -176,6 +177,7 @@ fn a_seed_germinates_like_on_the_judge() -> Result<(), EngineError> {
             polar: 0.1,
             ck_production: 0.0001,
             light_production: 0.0,
+            ck_light: 0.0,
             ..Params::default()
         };
         // Exact on WARP only (measured 2026-11-25: equal for 4000 steps, apart by 6000: the cube

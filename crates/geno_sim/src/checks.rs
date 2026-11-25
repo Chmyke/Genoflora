@@ -284,6 +284,7 @@ mod tests {
             light_production: 0.0,
             decay: 0.0,
             ck_production: 0.0,
+            ck_light: 0.0,
             ck_decay: 0.0,
             ..Params::default()
         };
@@ -325,11 +326,14 @@ mod tests {
         Ok(())
     }
 
-    /// A genome that needs a lot of hormone to grow and moves it fast.
+    /// The default genome before it could mature: cells stay young, make no cytokinin and cast
+    /// no shadow. What the root does is measured on it.
     fn frugal() -> Params {
         Params {
-            half_sat: 10.0,
-            polar: 0.1,
+            youth_rate: 0.0,
+            ck_light: 0.0,
+            ck_block: 0.1,
+            shade: 0.0,
             ..Params::default()
         }
     }

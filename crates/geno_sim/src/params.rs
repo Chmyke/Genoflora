@@ -112,12 +112,12 @@ impl Default for Params {
             seed: 20_261_124,
             r_div: 1.0,
             growth: 0.001,
-            half_sat: 1.0,
+            half_sat: 10.0,
             mob_rep: 0.1,
             mob_adh: 0.02,
             reach: 1.2,
             diffusion: 0.02,
-            polar: 0.02,
+            polar: 0.1,
             pin_rate: 0.01,
             pin_switch: 1.0,
             flux_half: 0.01,
@@ -128,19 +128,17 @@ impl Default for Params {
             // Off in the default genome: measured on 2026-11-25, cytokinin that only diffuses
             // makes no second pole (see docs/contexte/Feuille de route.md).
             ck_production: 0.0,
-            // Off in the default genome until measured.
-            ck_light: 0.0,
+            ck_light: 0.03,
             ck_diffusion: 0.05,
             ck_decay: 0.001,
             ck_half: 1.0,
-            ck_block: 0.1,
+            ck_block: 1.0,
             // Off in the default genome: cells stay round.
             elong: 0.0,
             e_half: 1.0,
             e_block: 1.0e6,
-            // Off in the default genome until measured: cells stay young.
-            youth_rate: 0.0,
-            youth_half: 1.0,
+            youth_rate: 0.01,
+            youth_half: 3.0,
             max_half_length: 1.0,
             align: 0.0,
             divide_every: 1,
@@ -150,8 +148,7 @@ impl Default for Params {
             soil_grip: 0.02,
             soil_hardness: 0.3,
             light_depth: 1.0,
-            // Off until measured.
-            shade: 0.0,
+            shade: 3.0,
         }
     }
 }

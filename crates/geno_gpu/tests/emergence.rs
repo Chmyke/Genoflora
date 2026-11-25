@@ -26,11 +26,14 @@ fn grow(p: &Params) -> Result<Option<Cells>, EngineError> {
     Err(EngineError("the tissue never filled up".into()))
 }
 
-/// A genome whose cells stretch where auxin is moderate and turn toward the auxin flow.
+/// A genome whose cells stretch where auxin is moderate and turn toward the auxin flow. Its cells
+/// stay young, make no cytokinin and cast no shadow unless a test says otherwise.
 fn stretching() -> Params {
     Params {
-        half_sat: 10.0,
-        polar: 0.1,
+        youth_rate: 0.0,
+        ck_light: 0.0,
+        ck_block: 0.1,
+        shade: 0.0,
         elong: 0.002,
         e_half: 0.2,
         e_block: 1.0,
