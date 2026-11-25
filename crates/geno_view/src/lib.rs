@@ -29,17 +29,34 @@ pub enum Mode {
     PumpsVertical = 4,
     /// How strongly the pumps gather on one side.
     PumpsStrength = 5,
+    /// What keeps the cells of a shoot tip young.
+    Relay = 6,
+    /// What the skin of a shoot tip sends back to hold the relay.
+    Restraint = 7,
 }
 
 impl Mode {
-    pub const ALL: [Mode; 6] = [
+    pub const ALL: [Mode; 8] = [
         Mode::Light,
         Mode::Youth,
         Mode::Auxin,
         Mode::Cytokinin,
         Mode::PumpsVertical,
         Mode::PumpsStrength,
+        Mode::Relay,
+        Mode::Restraint,
     ];
+
+    /// The hormone this mode shows (its index in a cell's hormones), if it shows one.
+    pub fn hormone(self) -> Option<usize> {
+        match self {
+            Mode::Auxin => Some(geno_sim::cells::AUXIN),
+            Mode::Cytokinin => Some(geno_sim::cells::CYTOKININ),
+            Mode::Restraint => Some(geno_sim::cells::RESTRAINT),
+            Mode::Relay => Some(geno_sim::cells::RELAY),
+            _ => None,
+        }
+    }
 
     /// Name shown to the user.
     pub fn label(self) -> &'static str {
@@ -50,6 +67,8 @@ impl Mode {
             Mode::Cytokinin => "Cytokinine",
             Mode::PumpsVertical => "Pompes, sens vertical",
             Mode::PumpsStrength => "Pompes, force",
+            Mode::Relay => "Relais",
+            Mode::Restraint => "Signal de retenue",
         }
     }
 }
@@ -141,9 +160,9 @@ pub struct Look {
     pub mode: Mode,
     /// Hides the half of the plant nearer than the point the camera looks at, to see inside.
     pub cut: bool,
-    /// Auxin and cytokinin concentrations shown as the top of the colour scale.
-    pub auxin_top: f32,
-    pub cytokinin_top: f32,
+    /// Concentrations shown as the top of the colour scale: auxin, cytokinin, restraint signal,
+    /// relay (the order of a cell's hormones).
+    pub tops: [f32; 4],
 }
 
 impl Look {
@@ -152,8 +171,7 @@ impl Look {
             camera,
             mode: Mode::Light,
             cut: false,
-            auxin_top: 8.0,
-            cytokinin_top: 2.0,
+            tops: [8.0, 4.0, 0.3, 2.0],
         }
     }
 
@@ -190,8 +208,8 @@ impl Look {
             [
                 self.mode as u32 as f32,
                 p.surface,
-                self.auxin_top,
-                self.cytokinin_top,
+                self.tops[self.mode.hormone().unwrap_or(0)],
+                0.0,
             ],
         ];
         let mut out: Vec<u8> = bytemuck::cast_slice(&m).to_vec();

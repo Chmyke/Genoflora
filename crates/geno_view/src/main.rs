@@ -1,10 +1,13 @@
 //! The window: one seed grows live on the graphics card and is drawn where it lives.
 //!
 //! Usage: geno_view                      opens the window
-//!        geno_view --capture out.png [steps=21000] [mode=1..6] [cut]
+//!        geno_view --capture out.png [steps=21000] [mode=1..8] [cut] [parameter=value]
 //!                                       grows a seed without a window and writes one picture
+//!        geno_view --sheet out.png [steps=24000] [shots=3] [parameter=value]
+//!                                       same, and writes one picture of the plant cut open per
+//!                                       age (rows) and per colour (columns), to judge it at a glance
 //!
-//! Keys: space pauses, 1 to 6 choose what the colour shows, C cuts the plant open, up and down
+//! Keys: space pauses, 1 to 8 choose what the colour shows, C cuts the plant open, up and down
 //! change the speed, F follows the plant again. Mouse: left drag turns, right drag moves up and
 //! down, wheel zooms.
 
@@ -38,18 +41,19 @@ fn framing(cells: &Cells, p: &Params) -> Camera {
 fn capture(args: &[String]) -> Result<(), Failure> {
     let out = args.first().ok_or("missing output file")?;
     let (mut steps, mut mode, mut cut) = (21_000u32, Mode::Light, false);
+    let mut p = Params::default();
     for arg in &args[1..] {
         match arg.split_once('=') {
             Some(("steps", v)) => steps = v.parse()?,
             Some(("mode", v)) => {
                 let n: usize = v.parse()?;
-                mode = *Mode::ALL.get(n.wrapping_sub(1)).ok_or("mode goes from 1 to 6")?;
+                mode = *Mode::ALL.get(n.wrapping_sub(1)).ok_or("mode goes from 1 to 8")?;
             }
             None if arg == "cut" => cut = true,
-            _ => return Err(format!("unknown argument {arg}").into()),
+            Some((name, v)) => p.set(name, v)?,
+            None => return Err(format!("unknown argument {arg}").into()),
         }
     }
-    let p = Params::default();
     let mut sim = GpuSim::new(&p, &Cells::seed(&p, CAPACITY, 1.0), Adapter::Hardware)?;
     geno_sim::checks::run(&mut sim, steps, Some(p.divide_every));
     let cells = sim.snapshot()?;
@@ -63,6 +67,82 @@ fn capture(args: &[String]) -> Result<(), Failure> {
     let rgba = still(&mut sim, &renderer, &p, &look, width, height)?;
     std::fs::write(out, png::encode(width, height, &rgba))?;
     println!("{out}: {} cells, {}", cells.count, mode.label());
+    Ok(())
+}
+
+/// The colours of a sheet, left to right.
+const SHEET: [Mode; 6] = [
+    Mode::Light,
+    Mode::Youth,
+    Mode::Auxin,
+    Mode::Cytokinin,
+    Mode::Relay,
+    Mode::Restraint,
+];
+/// Size of one picture of a sheet.
+const TILE: (u32, u32) = (420, 560);
+
+/// Concentration that 98 cells in 100 stay under, for one hormone: the top of its colour scale,
+/// so that one extreme cell does not flatten it.
+fn high(cells: &Cells, hormone: usize) -> f32 {
+    let mut all: Vec<f32> = (0..cells.count)
+        .map(|i| cells.h[i][hormone] / cells.pr[i][3].powi(3))
+        .collect();
+    all.sort_by(f32::total_cmp);
+    all.get(all.len() * 98 / 100).copied().unwrap_or(1.0).max(1e-6)
+}
+
+fn sheet(args: &[String]) -> Result<(), Failure> {
+    let out = args.first().ok_or("missing output file")?;
+    let (mut steps, mut shots) = (24_000u32, 3u32);
+    let mut p = Params::default();
+    for arg in &args[1..] {
+        match arg.split_once('=') {
+            Some(("steps", v)) => steps = v.parse()?,
+            Some(("shots", v)) => shots = v.parse()?,
+            Some((name, v)) => p.set(name, v)?,
+            None => return Err(format!("unknown argument {arg}").into()),
+        }
+    }
+    let shots = shots.max(1);
+    let mut sim = GpuSim::new(&p, &Cells::seed(&p, CAPACITY, 1.0), Adapter::Hardware)?;
+    let renderer = Renderer::new(sim.device(), STILL);
+    let (tile_w, tile_h) = TILE;
+    let (width, height) = (tile_w * SHEET.len() as u32, tile_h * shots);
+    let mut rgba = vec![0u8; (width * height * 4) as usize];
+    let names: Vec<&str> = SHEET.iter().map(|m| m.label()).collect();
+    println!("columns: {}", names.join(" | "));
+    for row in 0..shots {
+        geno_sim::checks::run(&mut sim, steps / shots, Some(p.divide_every));
+        let cells = sim.snapshot()?;
+        let mut look = Look {
+            cut: true,
+            ..Look::new(framing(&cells, &p))
+        };
+        look.tops = [0, 1, 2, 3].map(|hormone| high(&cells, hormone));
+        println!(
+            "row {}: step {}, {} cells, top of the scales: auxin {:.2}, cytokinin {:.2}, restraint {:.3}, relay {:.2}",
+            row + 1,
+            (row + 1) * (steps / shots),
+            cells.count,
+            look.tops[0],
+            look.tops[1],
+            look.tops[2],
+            look.tops[3],
+        );
+        for (col, &mode) in SHEET.iter().enumerate() {
+            look.mode = mode;
+            let tile = still(&mut sim, &renderer, &p, &look, tile_w, tile_h)?;
+            for y in 0..tile_h {
+                let from = (y * tile_w * 4) as usize;
+                let to = (((row * tile_h + y) * width + col as u32 * tile_w) * 4) as usize;
+                let len = (tile_w * 4) as usize;
+                rgba[to..to + len].copy_from_slice(&tile[from..from + len]);
+            }
+        }
+    }
+    std::fs::write(out, png::encode(width, height, &rgba))?;
+    println!("{out}");
     Ok(())
 }
 
@@ -217,6 +297,8 @@ impl App {
             KeyCode::Digit4 | KeyCode::Numpad4 => self.look.mode = Mode::ALL[3],
             KeyCode::Digit5 | KeyCode::Numpad5 => self.look.mode = Mode::ALL[4],
             KeyCode::Digit6 | KeyCode::Numpad6 => self.look.mode = Mode::ALL[5],
+            KeyCode::Digit7 | KeyCode::Numpad7 => self.look.mode = Mode::ALL[6],
+            KeyCode::Digit8 | KeyCode::Numpad8 => self.look.mode = Mode::ALL[7],
             _ => return,
         }
         let title = self.title();
@@ -319,6 +401,9 @@ impl ApplicationHandler for App {
 
 fn main() -> Result<(), Failure> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().is_some_and(|a| a == "--sheet") {
+        return sheet(&args[1..]);
+    }
     if args.first().is_some_and(|a| a == "--capture") {
         return capture(&args[1..]);
     }

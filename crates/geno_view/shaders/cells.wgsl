@@ -10,7 +10,7 @@ struct View {
     sky: vec4<f32>,
     // Point the camera looks at (xyz) and whether the near half is cut away (w).
     focus: vec4<f32>,
-    // mode, soil surface height, auxin scale, cytokinin scale.
+    // mode, soil surface height, top of the scale of the hormone shown, unused.
     look: vec4<f32>,
 }
 struct State { count: u32, epoch: u32, pad0: u32, pad1: u32 }
@@ -47,9 +47,12 @@ fn shown(i: u32) -> f32 {
         case 0u { return q.w; }
         case 1u { return youth[i]; }
         case 2u { return sqrt(hh[i].x / volume / V.look.z); }
-        case 3u { return sqrt(hh[i].y / volume / V.look.w); }
+        case 3u { return sqrt(hh[i].y / volume / V.look.z); }
+        case 6u { return sqrt(hh[i].w / volume / V.look.z); }
+        case 7u { return sqrt(hh[i].z / volume / V.look.z); }
         case 4u { return 0.5 + 0.5 * dot(q.xyz, V.sky.xyz); }
-        default { return length(q.xyz); }
+        case 5u { return length(q.xyz); }
+        default { return 0.0; }
     }
 }
 

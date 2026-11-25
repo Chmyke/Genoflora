@@ -397,12 +397,12 @@ terre sont teintées.
 
 - Lancer : `cargo run --release -p geno_view` (pour un essai par l'IA : le binaire construit,
   par `ecran-de-test.ps1`).
-- Touches : espace met en pause ; 1 à 6 choisissent la couleur (lumière reçue, jeunesse, auxine,
+- Touches : espace met en pause ; 1 à 8 choisissent la couleur (lumière reçue, jeunesse, auxine,
   cytokinine, sens des pompes, force des pompes) ; C coupe la plante en deux pour voir dedans ;
   flèches haut et bas changent la vitesse ; F recadre et suit la plante.
 - Souris : glisser à gauche tourne, glisser à droite monte et descend, la molette zoome.
 - Le titre de la fenêtre donne la couleur affichée, le nombre de cellules et le pas.
-- Sans fenêtre : `geno_view --capture image.png [steps=21000] [mode=1..6] [cut]`
+- Sans fenêtre : `geno_view --capture image.png [steps=21000] [mode=1..8] [cut] [paramètre=valeur]`
   (`docs/images/Vue 3D, jeunesse.png`).
 
 Pour l'affichage, la lumière reçue par chaque cellule est gardée dans la quatrième case de la
@@ -548,10 +548,8 @@ Cause manquante désignée par la mesure : rien, dans la tige, ne sépare nettem
 jeune d'une cellule mûre, ni ne désigne un endroit. C'est ce que la recherche attribue au relais
 de type WUS et au repère de surface (section 2 et 5 de `docs/Modèles scientifiques de plantes.md`).
 
-Outils : la sonde `tip` (`cargo run --release -p geno_gpu --example tip -- <pas> <relevés>
-[capacity=..] [paramètre=valeur]`) imprime à chaque relevé les foyers à l'air et le profil du
-centre au bord du foyer le plus haut (mesure `checks::profile`). Les sondes acceptent tous les
-paramètres du génome par leur nom (`Params::set`).
+Outils : la sonde `report` (décrite plus bas) a servi à ces mesures. Les sondes acceptent tous
+les paramètres du génome par leur nom (`Params::set`).
 
 Le relais et le repère de surface (2026-11-25, cause validée par Mickaël sur proposition). La
 boucle WUS / CLV3 entière, écrite en causes locales, quatre substances en tout :
@@ -604,7 +602,38 @@ par lui) ; il reste écrit ci-dessus.
 
 Relevés et visionneuse : `germinate` écrit deux colonnes de plus (signal de retenue, relais,
 après la cytokinine) et la visionneuse les affiche ; les relevés d'avant ne se relisent plus. La
-vue 3D n'a pas encore de mode pour ces deux substances.
+vue 3D les montre aussi (touches 7 et 8).
+
+Outils pour juger seul (2026-11-25, demande de Mickaël : que l'IA se donne les moyens de voir
+elle-même les problèmes, le but étant une plante visuellement convaincante) :
+
+- La planche : `cargo run --release -p geno_view -- --sheet sorties/planches/nom.png [steps=24000]
+  [shots=3] [paramètre=valeur]`. Une image, sans fenêtre : la plante en coupe, une ligne par âge,
+  une colonne par couleur (lumière reçue, jeunesse, auxine, cytokinine, relais, signal de
+  retenue). Les échelles des substances se règlent seules (98 cellules sur 100 dessous) et sont
+  imprimées. Les images ne sont pas compressées (17 Mo) : elles vont dans `sorties/`, hors du
+  dépôt.
+- Le bilan : `cargo run --release -p geno_gpu --example report -- <pas> <relevés> [capacity=..]
+  [profile=1] [paramètre=valeur]`. Une ligne par relevé : hauteur et largeur de la tige,
+  profondeur et largeur de la racine, nombre de foyers jeunes à l'air, taille du plus gros et du
+  plus haut, écart du plus haut à l'axe, jeunesse moyenne des cellules jeunes et des autres ;
+  puis le profil du centre au bord du foyer le plus haut (mesure `checks::profile`).
+- La vue 3D et `--capture` acceptent aussi les paramètres du génome par leur nom.
+
+Ce que la première planche a montré, et que les chiffres seuls cachaient (plante de référence,
+8 000, 16 000 et 24 000 pas) :
+
+- Pas de pointe visible. Le relais est fort dans toute la partie aérienne (0,8 partout), le
+  signal de retenue aussi, et la jeunesse y est presque uniforme : 0,53 en moyenne pour les
+  cellules « jeunes », 0,36 à 0,48 pour les autres. La boucle cale toute la tige au seuil, pas
+  seulement la peau. La taille du foyer est tenue (le test le mesure), mais ce foyer est
+  l'ensemble des cellules un peu au-dessus de 0,5, pas un méristème distinct d'une tige mûre. Le
+  résultat « la pointe tient sa taille » est donc vrai en nombre et pas encore à l'œil.
+- Une silhouette de tubercule : la tige fait 86 de haut pour 23 de large à 18 000 cellules, la
+  racine 55 de profondeur pour 20 de large. Ni tige ni racine fines.
+- Presque aucune cellule éclairée : quelques cellules au sommet seulement reçoivent la lumière,
+  tout le reste est dans l'ombre des voisines.
+- La racine n'est jeune que sur sa calotte du bas, sur toute sa largeur, et elle penche.
 
 Mesure préparatoire pour la racine (une graine, 7 400 cellules, avant le relais) : le maximum
 d'auxine est déjà étroit en hauteur (10 cellules sur 2 de haut tiennent plus de la moitié du pic,
@@ -612,6 +641,7 @@ d'auxine est déjà étroit en hauteur (10 cellules sur 2 de haut tiennent plus 
 sa largeur est jeune sur 8 de haut, et près de la pointe l'auxine est plus forte au bord que dans
 l'axe (23 contre 8), l'inverse plus haut (0,1 contre 0,5).
 
-Prochaine étape : un maximum d'auxine étroit à la pointe de racine (fontaine inversée), en
-commençant par un test qui enregistre la mesure ci-dessus. Ensuite, ce qui retient les
-ramifications de la tige.
+Prochaine étape, à trancher par Mickaël : la planche désigne deux défauts avant la fontaine
+inversée de la racine, le manque de contraste entre pointe et tige (toute la tige au seuil) et la
+silhouette trop épaisse. Chaque cause ajoutée se juge désormais à la planche et au bilan, pas
+seulement au test.
