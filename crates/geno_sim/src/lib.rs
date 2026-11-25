@@ -15,6 +15,7 @@ pub mod params;
 pub mod reference;
 pub mod rules;
 pub mod shape;
+pub mod soil;
 
 pub use cells::Cells;
 pub use engine::{Engine, EngineError};

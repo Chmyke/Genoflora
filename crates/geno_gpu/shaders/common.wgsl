@@ -8,7 +8,8 @@ struct Params {
     ck_production: f32, ck_diffusion: f32, ck_decay: f32, ck_half: f32,
     ck_block: f32, align: f32, elong: f32, e_half: f32,
     e_block: f32, max_half_length: f32, pin_rate: f32, pin_switch: f32,
-    flux_half: f32, gravisense: f32, pad0: u32, pad1: u32,
+    flux_half: f32, gravisense: f32, surface: f32, soil_grip: f32,
+    soil_hardness: f32, pad0: u32, pad1: u32, pad2: u32,
 }
 struct State { count: u32, epoch: u32, pad0: u32, pad1: u32 }
 // h = hormone amounts (auxin, cytokinin).
@@ -135,6 +136,12 @@ fn with_dir(s: Shape, g: vec3<f32>) -> Shape {
     out.b = vec4<f32>(s.b.x, s.b.y, g.x, g.y);
     out.c = vec4<f32>(g.z, s.c.y, s.c.z, s.c.w);
     return out;
+}
+
+// How much of a point is soil (mirrors soil::share).
+fn soil_share(at: vec3<f32>) -> f32 {
+    let height = -dot(at, vec3<f32>(P.gx, P.gy, P.gz));
+    return clamp((P.surface - height) / P.r_div + 0.5, 0.0, 1.0);
 }
 
 fn cell_coord(p: vec3<f32>) -> vec3<u32> {

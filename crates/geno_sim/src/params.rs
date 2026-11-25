@@ -75,6 +75,16 @@ pub struct Params {
     pub divide_every: u32,
     /// Direction in which heavy things fall (unit vector). Part of the environment, not of the cell.
     pub gravity: [f32; 3],
+    /// Height of the soil surface above the origin, where the seed starts (environment).
+    pub surface: f32,
+    /// Push the soil withstands without giving way, as a move per step: in the soil a cell only
+    /// moves by what its push exceeds this (solid friction, environment).
+    pub soil_grip: f32,
+    /// How hard the soil is: a cell whose walls press on the soil rather than on other cells grows
+    /// `1 + soil_hardness` times slower (environment).
+    pub soil_hardness: f32,
+    /// Depth over which the soil dims the light by a factor e (environment).
+    pub light_depth: f32,
 }
 
 impl Default for Params {
@@ -110,6 +120,11 @@ impl Default for Params {
             align: 0.0,
             divide_every: 1,
             gravity: [0.0, -1.0, 0.0],
+            // The seed lies just under the surface: one dividing radius of soil above it.
+            surface: 2.0,
+            soil_grip: 0.02,
+            soil_hardness: 0.3,
+            light_depth: 1.0,
         }
     }
 }

@@ -32,6 +32,8 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     var flux = vec3<f32>(0.0);
     var richer = vec3<f32>(0.0);
     var richness = 0.0;
+    var around = vec3<f32>(0.0);
+    var neighbours = 0.0;
     let qi = pin[i].xyz;
     for (var z = max(c.z - 1, 0); z <= min(c.z + 1, top); z++) {
         for (var y = max(c.y - 1, 0); y <= min(c.y + 1, top); y++) {
@@ -52,6 +54,8 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
                     let rs = extent(si, u) + extent(sq, u);
                     let reach = P.reach * rs;
                     if (d >= reach) { continue; }
+                    around += u;
+                    neighbours += 1.0;
                     let s = rs - d;
                     var f = P.mob_rep * s;
                     if (s <= 0.0) { f = -P.mob_adh * min(-s, reach - d); }
@@ -78,15 +82,21 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     let ca = hi.x / vi;
     let cc = hi.y / vi;
     let drive = ca / (P.half_sat + ca) + (cc / (P.ck_half + cc)) * (P.ck_block / (P.ck_block + ca));
-    let even = max(min(pi.w + P.growth * min(drive, 1.0), P.r_div), pi.w);
+    // Soil: solid friction on the move, and push-back on walls pressing on it (mirrors finish).
+    let soil = soil_share(pi.xyz);
+    var exposed = 1.0;
+    if (neighbours > 0.0) { exposed = sqrt(dot(around, around)) / neighbours; }
+    let held = max(1.0 - P.soil_grip * soil / max(sqrt(dot(disp, disp)), 1e-12), 0.0);
+    let slowed = 1.0 / (1.0 + P.soil_hardness * soil * exposed);
+    let even = max(min(pi.w + P.growth * min(drive, 1.0) * slowed, P.r_div), pi.w);
     let old = sh_dir(si);
     let turn = P.align * dot(old, flux);
     let a0 = old + turn * flux;
     let a = a0 * (1.0 / sqrt(max(dot(a0, a0), 1e-12)));
     let room = max(1.0 - si.c.y / (P.r_div * P.max_half_length), 0.0);
-    let eps = P.elong * (ca / (P.e_half + ca)) * (P.e_block / (P.e_block + ca)) * room;
+    let eps = P.elong * (ca / (P.e_half + ca)) * (P.e_block / (P.e_block + ca)) * room * slowed;
     shape_out[i] = with_dir(grow_along(grow_even(si, even / pi.w), a, eps), a);
-    pos_out[i] = vec4<f32>(pi.xyz + disp, even * pow(1.0 + eps, 1.0 / 3.0));
+    pos_out[i] = vec4<f32>(pi.xyz + held * disp, even * pow(1.0 + eps, 1.0 / 3.0));
     // Pumps: toward richer neighbours, along the flow, down (mirrors rules::polarise).
     let follow = ca / (P.pin_switch + ca);
     let uphill = (1.0 - follow) / max(richness, 1e-12);

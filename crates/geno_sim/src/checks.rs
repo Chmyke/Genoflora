@@ -300,9 +300,11 @@ mod tests {
         Ok(())
     }
 
+    // In the open air: in the soil, cells may press into each other by up to what the soil
+    // withstands (`soil_grip / mob_rep` of a radius).
     #[test]
     fn cells_do_not_pile_up() -> Result<(), EngineError> {
-        let p = Params::default();
+        let p = in_open_air(Params::default());
         let mut e = judge(&p, 300, 300);
         run(&mut e, 300, None);
         let overlap = worst_overlap(&e.snapshot()?);
@@ -331,6 +333,15 @@ mod tests {
         }
     }
 
+    /// The same genome with no soil around it: what the cells do on their own.
+    fn in_open_air(p: Params) -> Params {
+        Params {
+            soil_grip: 0.0,
+            soil_hardness: 0.0,
+            ..p
+        }
+    }
+
     fn germinate(p: &Params) -> Result<Cells, EngineError> {
         grow_seed(p, 1024, 24_000)
     }
@@ -346,7 +357,7 @@ mod tests {
     // grows when it holds enough auxin. The tests measure what comes out.
     #[test]
     fn a_seed_grows_a_column_that_goes_down_with_the_hormone_at_its_tip() -> Result<(), EngineError> {
-        let p = frugal();
+        let p = in_open_air(frugal());
         let cells = germinate(&p)?;
         let l = lie(&cells, p.gravity);
         assert!(cells.count >= 100, "only {} cells", cells.count);
@@ -358,10 +369,10 @@ mod tests {
 
     #[test]
     fn the_column_follows_gravity_wherever_it_points() -> Result<(), EngineError> {
-        let p = Params {
+        let p = in_open_air(Params {
             gravity: [0.6, 0.0, 0.8],
             ..frugal()
-        };
+        });
         let cells = germinate(&p)?;
         let l = lie(&cells, p.gravity);
         assert!(l.elongation >= 2.0 && l.reach.0 >= 5.0 * l.reach.1, "{l:?}");
@@ -389,12 +400,69 @@ mod tests {
     // source and a sink emerge.
     #[test]
     fn pumps_blind_to_gravity_make_no_column_yet() -> Result<(), EngineError> {
-        let p = Params {
+        let p = in_open_air(Params {
             gravisense: 0.0,
             ..frugal()
-        };
+        });
         let l = lie(&germinate(&p)?, p.gravity);
         assert!(l.elongation <= 1.4 && l.reach.0 <= 2.0 * l.reach.1, "{l:?}");
+        Ok(())
+    }
+
+    // The soil holds the cells: the seed cell (it keeps index 0 through its divisions) is pushed
+    // aside by the growing tissue far less than in the open air.
+    #[test]
+    fn the_soil_holds_the_seed_in_place() -> Result<(), EngineError> {
+        let drift = |p: Params| -> Result<f32, EngineError> {
+            let q = grow_seed(&p, 1024, 24_000)?.pr[0];
+            Ok((q[0] * q[0] + q[1] * q[1] + q[2] * q[2]).sqrt())
+        };
+        let soft = Params {
+            soil_hardness: 0.0,
+            ..frugal()
+        };
+        let (held, free) = (drift(soft)?, drift(in_open_air(soft))?);
+        // Measured 2026-11-25: 1.48 against 2.54.
+        eprintln!("seed cell drift: {held:.2} in the soil, {free:.2} in the open air");
+        assert!(held <= 0.7 * free, "{held} against {free}");
+        Ok(())
+    }
+
+    // A hard soil pushes back on the tip of the root, which then reaches less deep.
+    #[test]
+    fn a_hard_soil_slows_the_root() -> Result<(), EngineError> {
+        let depth = |hardness: f32| -> Result<f64, EngineError> {
+            let p = Params {
+                soil_hardness: hardness,
+                ..frugal()
+            };
+            Ok(lie(&germinate(&p)?, p.gravity).reach.0)
+        };
+        let (hard, soft) = (depth(0.3)?, depth(0.0)?);
+        // Measured 2026-11-25: 22.2 against 26.5.
+        eprintln!("root depth: {hard:.1} in a hard soil, {soft:.1} in a soft one");
+        assert!(hard <= 0.9 * soft, "{hard} against {soft}");
+        Ok(())
+    }
+
+    // Measured 2026-11-25 on three seeds and six soils: at most two cells ever break the surface.
+    // The root only grows at its tip, where the auxin gathers; the top of the seed, drained of
+    // auxin, does not grow, so nothing pushes up against the hold of the soil. This test records
+    // that; it is expected to break the day a shoot emerges.
+    #[test]
+    fn nothing_comes_out_of_the_soil_yet() -> Result<(), EngineError> {
+        let p = frugal();
+        let cells = germinate(&p)?;
+        let out = cells
+            .alive()
+            .iter()
+            .filter(|q| crate::soil::share(&p, &q[..3]) < 0.5)
+            .count();
+        assert!(
+            out * 100 <= cells.count,
+            "{out} of {} cells above the surface",
+            cells.count
+        );
         Ok(())
     }
 
@@ -414,7 +482,7 @@ mod tests {
     // up with the flow only shows on a big tissue: `geno_gpu/tests/emergence.rs` measures it.
     #[test]
     fn the_stretching_genome_stretches_its_cells() -> Result<(), EngineError> {
-        let p = stretching();
+        let p = in_open_air(stretching());
         let l = lie(&grow_seed(&p, 1024, 12_000)?, p.gravity);
         assert!(l.stretch >= 2.0, "{l:?}");
         Ok(())

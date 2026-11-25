@@ -117,6 +117,7 @@ n'est accrochée à rien. Les cellules ne font que se pousser entre elles, donc 
 de sens physique : la colonne s'étire autour de son propre centre, et seul l'endroit où les
 cellules se divisent décide de quel côté de la graine elle s'étend. Le sol (piste A2) n'est donc
 pas un décor : c'est ce qui donne un point d'appui pour qu'une partie puisse pousser vers le haut.
+(Réfuté le 2026-11-25 par le lot « sol et air », plus bas : l'appui ne suffit pas.)
 
 Biais corrigé en route : l'axe de la cellule graine était tiré une fois pour toutes et toutes les
 cellules en héritaient. Il est maintenant tiré de la graine numérique.
@@ -182,8 +183,8 @@ existe déjà dans l'embryon (hérité de la mère) ; il ne naît pas de rien. U
 (`pumps_blind_to_gravity_make_no_column_yet`) et doit casser le jour où une source et un puits
 émergeront.
 
-Vérification : la comparaison GPU contre juge couvre les pompes (exacte sur 60 pas, germination
-exacte sur WARP). L'alignement ne se voit pas sur les quelques centaines de cellules du juge : il
+Vérification : la comparaison GPU contre juge couvre les pompes (exacte sur 60 pas sur WARP, 30
+sur la carte depuis le sol ; germination exacte sur WARP). L'alignement ne se voit pas sur les quelques centaines de cellules du juge : il
 est mesuré sur la carte (`geno_gpu/tests/emergence.rs`, sauté sans carte graphique).
 
 Effets sur la vérification : divisions à chaque pas, donc un tissu chaotique plus tôt. La
@@ -192,46 +193,50 @@ comparaison exacte GPU contre juge tient 60 pas sur un tissu, au-delà elle est 
 arrondit un peu moins finement). La longueur d'une cellule est calculée par rotations de Jacobi :
 la formule directe était fausse de 0,2 % pour les cellules plates, et décidait des divisions.
 
-Limites : pas de sol ni de lumière ; le juge compare toutes les paires (petits tissus seulement) ;
+Limites : la lumière n'agit encore sur rien ; le juge compare toutes les paires (petits tissus seulement) ;
 la grille GPU grossit avec l'étirement maximal, donc le calcul ralentit.
 
-Suite proposée par Claude (à trancher au début du prochain lot) : la piste A2 « sol et air »
-avant une source et un puits d'auxine. Raison : décider sans environnement où l'auxine se
-fabrique demanderait une règle interne arbitraire, proche de coder le résultat ; le sol et l'air
-donnent à chaque cellule une vraie information locale (dans la terre ou dehors, à la lumière ou
-non), d'où une source et un puits pourront découler (par exemple : une cellule exposée fabrique
-plus d'auxine).
+Sol et air (2026-11-25, piste A2, contenu validé par Mickaël : ancrage et lumière sans capacité
+nouvelle, graine juste sous la surface, frottement et dureté). Tout est de l'environnement
+(`geno_sim::soil`), rien n'est une capacité de cellule :
 
-## Ordre proposé des facteurs d'environnement (non validé)
+- La terre remplit tout sous une surface plane, un rayon de division au-dessus du centre de la
+  graine ; elle s'amincit sur un rayon de part et d'autre de la surface (aucun saut).
+- Frottement solide : dans la terre, une cellule ne bouge que de ce que sa poussée dépasse ce
+  que la terre supporte (`soil_grip`). Un premier essai en frottement visqueux (la terre prend
+  une part fixe du mouvement) n'ancrait rien : la croissance est si lente que les cellules
+  finissent par se pousser comme à l'air libre (graine déplacée de 1,57 contre 1,67).
+- Dureté : une cellule dont les parois pressent sur la terre plutôt que sur d'autres cellules
+  grandit plus lentement (`soil_hardness`). « Presser sur la terre » est estimé par le
+  déséquilibre de ses voisines : entourée de tous côtés, elle n'est pas exposée ; seule, ou à la
+  pointe d'une colonne, elle l'est.
+- Lumière : pleine dans l'air, divisée par e à chaque `light_depth` de profondeur. Aucune règle
+  ne l'utilise encore.
 
-Chacun arrive avec son module de gènes et un critère chiffré tiré d'observations réelles.
+Les réglages par défaut (prise 0,02, dureté 0,3, lumière 1) sont choisis par Claude, sans chiffre
+du réel.
 
-1. Gravité : la tige monte, la racine descend (auxine redistribuée).
-2. Lumière et phototropisme : la tige se courbe vers une lumière latérale.
-3. Photosynthèse et sucre : la croissance dépend de la lumière reçue.
-4. Jour-nuit : croissance et ouverture des stomates qui suivent le cycle.
-5. Eau et hygrométrie : racines, transport, flétrissement à sec.
-6. Saisons : floraison déclenchée par la durée du jour (CONSTANS/FT).
-7. Vent : la tige plie, et une plante secouée pousse plus courte et plus épaisse
-   (thigmomorphogenèse, gènes TCH) ; critère : rapport hauteur/diamètre plus bas sous vent.
+Mesuré (juge, 1 024 cellules, trois graines) : la terre tient la graine (déplacée de 1,48 contre
+2,54 à l'air libre), la dureté raccourcit la racine (22 contre 26,5 de profondeur), et **rien ne
+sort de terre** : sur dix-huit essais (six sols, trois graines), au plus deux cellules dépassent
+la surface. La leçon d'avant est donc réfutée. La racine ne grandit qu'à sa pointe, là où
+l'auxine s'accumule ; le haut de la graine, vidé de son auxine, ne grandit pas, donc rien ne
+pousse contre l'appui. Ce qui manque n'est pas un appui mais un second foyer de croissance en haut.
+Un test l'enregistre (`nothing_comes_out_of_the_soil_yet`) et doit casser le jour où une tige
+émergera.
 
-## Signature visuelle d'un timelapse (tests d'émergence, non validés)
+Vérification : sur la carte, la dureté fait entrer une racine carrée et une division dans la
+croissance ; la carte les arrondit moins finement, et une division y bascule d'un pas au pas 34
+(identique sur 60 pas sans sol). La comparaison exacte tient 30 pas sur la carte, 60 sur WARP.
 
-Ce qui fait qu'un timelapse « a l'air vivant ». Règle absolue : aucun de ces comportements n'est codé.
-Chacun doit émerger des règles locales des cellules ; il sert seulement de test qui mesure le
-résultat (par exemple : trajectoire de la pointe périodique, sans aucun sinus dans le code).
+Prochaine étape, à trancher : un second foyer de croissance en haut. Deux pistes, toutes deux
+des capacités de cellule à valider :
 
-- Circumnutation : la pointe décrit des ellipses en poussant (souvenir : période d'une à quelques
-  heures selon l'espèce).
-- Croissance concentrée juste sous la pointe (zone d'élongation), le reste se fige.
-- Feuilles qui montent la nuit et s'abaissent le jour (nyctinastie).
-- Tige qui se réoriente vers la lumière en quelques heures.
-- Racines qui explorent, se ramifient, contournent les obstacles.
-- Bourgeons qui gonflent puis s'ouvrent, puis fleur, graine, déclin.
-
-Piste pour la circumnutation (souvenir, à revérifier) : une hypothèse classique la fait naître
-d'une boucle de gravitropisme avec retard. La tige penche, l'auxine migre vers le côté bas avec un
-délai, le côté bas pousse plus, la tige dépasse la verticale, et ainsi de suite (Israelsson et
-Johnsson 1967 ; voir aussi Bastien et al. 2013, graviproprioception). Il faudrait donc dans le
-modèle : un transport d'auxine qui prend du temps, et une croissance différente selon le flanc de
-la tige. L'ellipse en sortirait sans être écrite.
+- La lumière fabrique l'auxine : une cellule éclairée en fabrique davantage (dans une vraie
+  plantule, cotylédons et pointe de tige en sont les sources). Le haut de la graine, à un demi-rayon
+  sous la surface, reçoit déjà de la lumière (environ 0,6) : il deviendrait une source, la racine
+  un puits, de quoi donner à la canalisation ses deux bouts.
+- L'identité des cellules : une vraie graine sépare déjà tige et racine dans l'embryon. Une
+  identité qui émergerait du rapport auxine/cytokinine (Skoog et Miller) ferait réagir
+  différemment les deux bouts ; mais la cytokinine seule a déjà échoué (elle reste près de la
+  racine).

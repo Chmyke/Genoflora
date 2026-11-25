@@ -29,7 +29,15 @@ fn on_each_adapter(check: impl Fn(Adapter) -> Result<(), EngineError>) -> Result
 
 /// Cell-by-cell comparison only holds on a short run: cells divide as soon as they are ready, and
 /// a rounding difference that tips one division moves every later cell (the tissue is chaotic).
-const EXACT_STEPS: u32 = 60;
+/// The graphics card rounds square roots and divisions less finely than WARP: since the soil
+/// slows growth through both, a division tipped one step apart at step 34 on the card (measured
+/// 2026-11-25; equal for 60 steps without soil), never on WARP.
+fn exact_steps(adapter: Adapter) -> u32 {
+    match adapter {
+        Adapter::Software => 60,
+        Adapter::Hardware => 30,
+    }
+}
 
 /// Beyond that, the two tissues must agree in count (within 1 %), shape and hormone mass.
 fn assert_alike(adapter: Adapter, gap: &geno_sim::checks::Gap) {
@@ -50,7 +58,12 @@ fn matches_the_judge_cell_by_cell_on_a_short_run() -> Result<(), EngineError> {
     on_each_adapter(|adapter| {
         let p = Params::default();
         let start = lattice(500, 4096, &p);
-        let gap = gap_to_judge(&mut GpuSim::new(&p, &start, adapter)?, &p, &start, EXACT_STEPS)?;
+        let gap = gap_to_judge(
+            &mut GpuSim::new(&p, &start, adapter)?,
+            &p,
+            &start,
+            exact_steps(adapter),
+        )?;
         assert_eq!(gap.counts.0, gap.counts.1, "{adapter:?} {gap:?}");
         assert!(gap.position <= 1e-3 && gap.mass <= 1e-4, "{adapter:?} {gap:?}");
         Ok(())
@@ -110,7 +123,12 @@ fn division_conserves_volume_and_hormone() -> Result<(), EngineError> {
 #[test]
 fn cells_do_not_pile_up() -> Result<(), EngineError> {
     on_each_adapter(|adapter| {
-        let p = Params::default();
+        // In the open air: in the soil, cells may press into each other by what it withstands.
+        let p = Params {
+            soil_grip: 0.0,
+            soil_hardness: 0.0,
+            ..Params::default()
+        };
         let mut e = engine(&p, 1000, 1000, adapter)?;
         run(&mut e, 300, None);
         let overlap = worst_overlap(&e.snapshot()?);
@@ -183,7 +201,7 @@ fn stretching_cells_match_the_judge_cell_by_cell_on_a_short_run() -> Result<(), 
         let p = stretching();
         let start = lattice(500, 4096, &p);
         let mut gpu = GpuSim::new(&p, &start, adapter)?;
-        let gap = gap_to_judge(&mut gpu, &p, &start, EXACT_STEPS)?;
+        let gap = gap_to_judge(&mut gpu, &p, &start, exact_steps(adapter))?;
         assert_eq!(gap.counts.0, gap.counts.1, "{adapter:?} {gap:?}");
         assert!(gap.position <= 1e-3 && gap.mass <= 1e-4, "{adapter:?} {gap:?}");
         let stretched = gpu

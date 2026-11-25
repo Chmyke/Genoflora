@@ -81,8 +81,8 @@ pub struct GpuSim {
     scan_div: Scan,
 }
 
-/// Size of the uniform block: 36 four-byte fields.
-const PARAMS_BYTES: usize = 144;
+/// Size of the uniform block: 40 four-byte fields.
+const PARAMS_BYTES: usize = 160;
 
 /// Uniform block of the shaders. Layout mirrors `Params` in `shaders/common.wgsl`.
 fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
@@ -123,6 +123,10 @@ fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
         f(p.pin_switch),
         f(p.flux_half),
         f(p.gravisense),
+        f(p.surface),
+        f(p.soil_grip),
+        f(p.soil_hardness),
+        u(0),
         u(0),
         u(0),
     ]

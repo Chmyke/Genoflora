@@ -4,6 +4,7 @@ use crate::cells::{Cell, Cells};
 use crate::hash::axis;
 use crate::params::{INV_CBRT2, LENGTH_MARGIN, Params};
 use crate::shape::{HALF, dir, extent, grow_along, grow_even, stretched, with_dir};
+use crate::soil;
 
 /// What a cell gathers from its neighbours during one step.
 #[derive(Clone, Copy, Debug, Default)]
@@ -23,6 +24,10 @@ pub struct Gathered {
     pub richer: [f32; 3],
     /// ...and the sum of those concentrations.
     pub richness: f32,
+    /// Sum of the unit vectors from the neighbours to the cell...
+    pub around: [f32; 3],
+    /// ...and how many neighbours there are.
+    pub neighbours: f32,
 }
 
 fn dot(a: &[f32], b: &[f32]) -> f32 {
@@ -49,6 +54,10 @@ pub fn interact(me: &Cell, other: &Cell, p: &Params, g: &mut Gathered) {
     }
     // Overlap: linear repulsion. Gap: adhesion shaped as a tent that returns to zero at the reach,
     // so the force has no jump (a jump would amplify rounding differences).
+    g.around[0] += u[0];
+    g.around[1] += u[1];
+    g.around[2] += u[2];
+    g.neighbours += 1.0;
     let s = rs - d;
     let pull = (-s).min(reach - d);
     let coef = (if s > 0.0 { p.mob_rep * s } else { -p.mob_adh * pull }) / d;
@@ -97,7 +106,20 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     // auxin is scarce.
     let (ca, cc) = (hi[0] / volume, hi[1] / volume);
     let drive = ca / (p.half_sat + ca) + (cc / (p.ck_half + cc)) * (p.ck_block / (p.ck_block + ca));
-    let even = (pi[3] + p.growth * drive.min(1.0)).min(p.r_div).max(pi[3]);
+    // The soil holds the cell, and pushes back on the walls that press on it rather than on other
+    // cells: a cell surrounded evenly presses on no soil, a lone cell or the tip of a column does.
+    let soil = soil::share(p, pi);
+    let exposed = if g.neighbours > 0.0 {
+        dot(&g.around, &g.around).sqrt() / g.neighbours
+    } else {
+        1.0
+    };
+    let push = dot(&g.disp, &g.disp).sqrt();
+    let held = (1.0 - p.soil_grip * soil / push.max(1e-12)).max(0.0);
+    let slowed = 1.0 / (1.0 + p.soil_hardness * soil * exposed);
+    let even = (pi[3] + p.growth * drive.min(1.0) * slowed)
+        .min(p.r_div)
+        .max(pi[3]);
     // The growth direction (how the wall lets the cell grow) turns toward the line of the auxin
     // flow, the faster the stronger the flow. The cell itself never turns.
     let old = dir(s);
@@ -112,14 +134,14 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     // Growth along that direction adds volume, like water taken up: some auxin helps, too much
     // holds it back, and it fades as the cell nears its longest.
     let room = (1.0 - s[HALF] / (p.r_div * p.max_half_length)).max(0.0);
-    let eps = p.elong * (ca / (p.e_half + ca)) * (p.e_block / (p.e_block + ca)) * room;
+    let eps = p.elong * (ca / (p.e_half + ca)) * (p.e_block / (p.e_block + ca)) * room * slowed;
     let shape = with_dir(&grow_along(&grow_even(s, even / pi[3]), &a, eps), a);
     let pin = polarise(me, g, p, ca);
     Cell {
         pr: [
-            pi[0] + g.disp[0],
-            pi[1] + g.disp[1],
-            pi[2] + g.disp[2],
+            pi[0] + held * g.disp[0],
+            pi[1] + held * g.disp[1],
+            pi[2] + held * g.disp[2],
             even * (1.0 + eps).powf(1.0 / 3.0),
         ],
         shape,
