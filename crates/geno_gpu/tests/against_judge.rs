@@ -39,12 +39,15 @@ fn exact_steps(adapter: Adapter) -> u32 {
     }
 }
 
-/// Beyond that, the two tissues must agree in count (within 1 %), shape and hormone mass.
+/// Beyond that, the two tissues must agree in count, shape and hormone mass, within 3 %. It was
+/// 1 % until growth answered the pressure of the neighbours (2026-11-25): a cell pressed a hair
+/// more divides later, so the tissues part sooner (measured on 600 steps: 2.4 % in count, 1.7 % in
+/// mass, 0.5 % in shape, the short runs staying exact).
 fn assert_alike(adapter: Adapter, gap: &geno_sim::checks::Gap) {
     let counts = (gap.counts.0 as f64 - gap.counts.1 as f64).abs() / gap.counts.1 as f64;
     eprintln!("{adapter:?} {gap:?}");
     assert!(
-        counts <= 0.01 && gap.shape <= 1e-2 && gap.mass <= 1e-2,
+        counts <= 0.03 && gap.shape <= 3e-2 && gap.mass <= 3e-2,
         "{adapter:?} {gap:?}"
     );
 }
@@ -74,6 +77,30 @@ fn matches_the_judge_cell_by_cell_on_a_short_run() -> Result<(), EngineError> {
         let cells = gpu.snapshot()?;
         let mature = cells.youths().iter().filter(|&&y| y <= 0.5).count();
         assert!(mature > 20, "{adapter:?} only {mature} mature cells");
+        Ok(())
+    })
+}
+
+// The grid only covers the ball that the capacity can form; a root grows far out of it. Cells out
+// of the grid are gathered in its border cells, where the neighbour search must stay exact.
+#[test]
+fn matches_the_judge_cell_by_cell_far_out_of_the_grid() -> Result<(), EngineError> {
+    on_each_adapter(|adapter| {
+        // Without soil: this is about the neighbour search, and the card tips a division within
+        // thirty steps once every cell is slowed by the soil (see `exact_steps`).
+        let p = Params {
+            soil_grip: 0.0,
+            soil_hardness: 0.0,
+            ..Params::default()
+        };
+        let mut start = lattice(500, 4096, &p);
+        for q in &mut start.pr[..500] {
+            q[1] -= 60.0;
+        }
+        let mut gpu = GpuSim::new(&p, &start, adapter)?;
+        let gap = gap_to_judge(&mut gpu, &p, &start, exact_steps(adapter))?;
+        assert_eq!(gap.counts.0, gap.counts.1, "{adapter:?} {gap:?}");
+        assert!(gap.position <= 1e-3 && gap.mass <= 1e-4, "{adapter:?} {gap:?}");
         Ok(())
     })
 }

@@ -3,6 +3,7 @@
 | Sujet | Où |
 |---|---|
 | Idée, existant, modèle proposé, jalons, risques, références | `docs/Note de faisabilité.md` |
+| Comment la recherche modélise une plante cellule par cellule (sources, causes manquantes) | `docs/Modèles scientifiques de plantes.md` |
 | État et prochaine étape | `docs/contexte/Feuille de route.md` |
 | Threads, GPU, déterminisme, forme des données | `docs/contexte/Parallélisme.md` |
 | Les trois essais : scénario, protocoles, grille de choix | `docs/Plan des essais.md` |

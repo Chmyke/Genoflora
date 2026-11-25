@@ -3,22 +3,37 @@
 //! (the software adapter would take hours).
 
 use geno_gpu::{Adapter, GpuSim};
-use geno_sim::checks::{lie, run};
+use geno_sim::checks::{foci, lie, packing, run};
 use geno_sim::{Cells, Engine, EngineError, Params};
 
 /// Grows a seed until the tissue is nearly full, or `None` without a graphics card.
 fn grow(p: &Params) -> Result<Option<Cells>, EngineError> {
+    grow_watched(p, 2000, |_| ())
+}
+
+/// Same, showing the tissue to `watch` every `every` steps on the way.
+fn grow_watched(p: &Params, every: u32, mut watch: impl FnMut(&Cells)) -> Result<Option<Cells>, EngineError> {
     const CAPACITY: usize = 16_384;
-    let mut sim = match GpuSim::new(p, &Cells::seed(p, CAPACITY, 1.0), Adapter::Hardware) {
+    // PITFALL: tests run in parallel threads, and creating several devices at once has left a
+    // run spinning forever on one core (seen again 2026-11-25); the plants then grow in parallel.
+    static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let created = {
+        let _turn = ONE_AT_A_TIME
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        GpuSim::new(p, &Cells::seed(p, CAPACITY, 1.0), Adapter::Hardware)
+    };
+    let mut sim = match created {
         Ok(sim) => sim,
         Err(e) => {
             eprintln!("hardware adapter skipped: {e}");
             return Ok(None);
         }
     };
-    for _ in 0..40 {
-        run(&mut sim, 2000, Some(p.divide_every));
+    for _ in 0..80_000 / every {
+        run(&mut sim, every, Some(p.divide_every));
         let cells = sim.snapshot()?;
+        watch(&cells);
         if cells.count >= CAPACITY * 97 / 100 {
             return Ok(Some(cells));
         }
@@ -34,6 +49,7 @@ fn stretching() -> Params {
         ck_light: 0.0,
         ck_block: 0.1,
         shade: 0.0,
+        squeeze_hold: 0.0,
         elong: 0.002,
         e_half: 0.2,
         e_block: 1.0,
@@ -108,12 +124,14 @@ fn maturing_cells_make_the_root_grow_from_its_tip() -> Result<(), EngineError> {
 // the top bursts into a ball (a callus, as in Skoog and Miller's dishes), not a shoot: nothing
 // confines the young cells to a tip. This test records the ball; it is expected to break the day
 // a tip holds itself (in real plants, the stem cells hold back their neighbours: WUS/CLV3).
+// Remeasured 2026-11-25 once the soil only held the cells that touch it: the threshold moved from
+// 0.01 to 0.03 (9700 of 16000 cells in the air, 35 high for 17 across).
 #[test]
 fn light_made_cytokinin_wakes_the_top_into_a_ball_not_a_shoot() -> Result<(), EngineError> {
     let p = Params {
         youth_rate: 0.01,
         youth_half: 3.0,
-        ck_light: 0.01,
+        ck_light: 0.03,
         ck_block: 1.0,
         ..stretching()
     };
@@ -178,6 +196,77 @@ fn shaded_cells_mature_and_a_stem_rises_from_the_lit_top() -> Result<(), EngineE
             "seed {seed}: {air} cells, height {height}, across {across}"
         );
         assert!(depth >= 30.0, "seed {seed}: root only {depth} deep");
+    }
+    Ok(())
+}
+
+// The plant must hold together as it grows: cells that keep their place have a dozen neighbours,
+// and no hormone ever goes below zero. Measured 2026-11-25, before the soil only held the cells
+// that touch it: the cells inside the root, held too, piled up as they grew (40 neighbours,
+// overlaps deeper than a radius); cytokinin diffusion then overshot, went negative and blew up,
+// every cell turned young, and the card gave up.
+#[test]
+fn the_reference_plant_does_not_pile_up() -> Result<(), EngineError> {
+    // The reference plant, and the same without shade: every lit cell stays young and the top
+    // divides everywhere (a ball), which is where cells used to be crushed into each other.
+    let reference = Params::default();
+    let ball = Params {
+        shade: 0.0,
+        ..reference
+    };
+    for p in [reference, ball] {
+        let Some(cells) = grow(&p)? else {
+            return Ok(());
+        };
+        let packed = packing(&cells, &p);
+        eprintln!("shade {}: {packed:?}", p.shade);
+        assert!(packed.lowest >= 0.0, "{packed:?}");
+        assert!(
+            packed.neighbours * p.ck_diffusion.max(p.diffusion) < 1.5,
+            "{packed:?}"
+        );
+    }
+    Ok(())
+}
+
+// What the lit top of the reference plant is made of, measured 2026-11-25 on three seeds. A focus
+// of young cells does stay at the very top and climbs steadily: a tip. But nothing sets its size:
+// it swells and shrinks between about ten and more than a hundred cells, and pieces of it stay
+// behind on the lit shoulders, where they live on as tips of their own (side branches, not
+// leaves: same hormones as the tip, never flat, no regular spacing). This test records the
+// wandering size; it is expected to break the day the tip holds its size (in real plants, the
+// stem cells hold back their neighbours: WUS/CLV3).
+#[test]
+fn the_tip_of_the_stem_has_no_steady_size_yet() -> Result<(), EngineError> {
+    for seed in 1..=3 {
+        let p = Params {
+            seed,
+            ..Params::default()
+        };
+        let mut sizes = Vec::new();
+        let mut branches = 0;
+        let grown = grow_watched(&p, 1000, |cells| {
+            let aerial = foci(cells, &p, |q| geno_sim::soil::share(&p, &q[..3]) < 0.5);
+            // Once the stem is out: a tip of at least ten cells has been seen.
+            let biggest = aerial.first().map_or(0, |f| f.cells);
+            if biggest >= 10 || !sizes.is_empty() {
+                sizes.push(biggest);
+            }
+            branches = aerial.iter().filter(|f| f.cells >= 6).count();
+        })?;
+        if grown.is_none() {
+            return Ok(());
+        }
+        let (low, high) = (
+            sizes.iter().copied().min().unwrap_or(0),
+            sizes.iter().copied().max().unwrap_or(0),
+        );
+        eprintln!("seed {seed}: biggest focus in the air {sizes:?}, {branches} foci at the end");
+        assert!(
+            sizes.len() >= 5,
+            "seed {seed}: the stem came out too late, {sizes:?}"
+        );
+        assert!(high >= 4 * low.max(1), "seed {seed}: {sizes:?}");
     }
     Ok(())
 }

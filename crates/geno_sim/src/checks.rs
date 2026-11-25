@@ -52,19 +52,101 @@ pub fn run(e: &mut dyn Engine, steps: u32, divide_every: Option<u32>) {
     }
 }
 
+/// What cell `i` gathers from all the others. Every pair is tested, like the judge.
+fn gathered(c: &Cells, p: &Params, i: usize) -> crate::rules::Gathered {
+    let me = c.get(i);
+    let mut g = crate::rules::Gathered::default();
+    for j in (0..c.count).filter(|&j| j != i) {
+        crate::rules::interact(&me, &c.get(j), p, &mut g);
+    }
+    g
+}
+
 /// Light each cell receives: what the soil lets through, dimmed by the cells lying above it.
-/// Every pair is tested, like the judge.
 pub fn light_on(c: &Cells, p: &Params) -> Vec<f32> {
     (0..c.count)
-        .map(|i| {
-            let me = c.get(i);
-            let mut g = crate::rules::Gathered::default();
-            for j in (0..c.count).filter(|&j| j != i) {
-                crate::rules::interact(&me, &c.get(j), p, &mut g);
-            }
-            crate::soil::shaded(p, crate::soil::light(p, &me.pr), g.cover)
-        })
+        .map(|i| crate::soil::shaded(p, crate::soil::light(p, &c.pr[i]), gathered(c, p, i).cover))
         .collect()
+}
+
+/// How packed a tissue is, and whether its hormones are still sound.
+#[derive(Clone, Copy, Debug)]
+pub struct Packing {
+    /// Most neighbours any cell has. Cells that hold their place have a dozen; many more means
+    /// they are piled into each other.
+    pub neighbours: f32,
+    /// Lowest hormone amount of any cell. Below zero, the diffusion has overshot: it closes
+    /// `diffusion` of the gap with each neighbour, so it needs `diffusion * neighbours` under one.
+    pub lowest: f32,
+}
+
+/// Measures the packing of the tissue.
+pub fn packing(c: &Cells, p: &Params) -> Packing {
+    Packing {
+        neighbours: (0..c.count)
+            .map(|i| gathered(c, p, i).neighbours)
+            .fold(0.0, f32::max),
+        lowest: c
+            .hormone()
+            .iter()
+            .flatten()
+            .copied()
+            .fold(f32::INFINITY, f32::min),
+    }
+}
+
+/// A group of young cells in contact: a place where the tissue still divides.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Focus {
+    pub cells: usize,
+    /// Mean position of its cells.
+    pub centre: [f32; 3],
+}
+
+/// The foci of the tissue among the cells that `keep` retains, the biggest first. Two young cells
+/// belong to the same focus when they are neighbours, or linked by a chain of young neighbours.
+pub fn foci(c: &Cells, p: &Params, keep: impl Fn(&[f32; 4]) -> bool) -> Vec<Focus> {
+    let young: Vec<usize> = (0..c.count)
+        .filter(|&i| c.youth[i] > crate::params::YOUNG && keep(&c.pr[i]))
+        .collect();
+    // Union-find over the young cells: `group[a]` leads to the representative of `a`.
+    let mut group: Vec<usize> = (0..young.len()).collect();
+    fn find(group: &mut [usize], mut a: usize) -> usize {
+        while group[a] != a {
+            group[a] = group[group[a]];
+            a = group[a];
+        }
+        a
+    }
+    for (a, &first) in young.iter().enumerate() {
+        let me = c.get(first);
+        for (b, &second) in young.iter().enumerate().skip(a + 1) {
+            let mut g = crate::rules::Gathered::default();
+            crate::rules::interact(&me, &c.get(second), p, &mut g);
+            if g.neighbours > 0.0 {
+                let (ra, rb) = (find(&mut group, a), find(&mut group, b));
+                group[ra] = rb;
+            }
+        }
+    }
+    let mut sums = vec![(0usize, [0.0f64; 3]); young.len()];
+    for (a, &cell) in young.iter().enumerate() {
+        let root = find(&mut group, a);
+        sums[root].0 += 1;
+        for k in 0..3 {
+            sums[root].1[k] += f64::from(c.pr[cell][k]);
+        }
+    }
+    let mut out: Vec<Focus> = sums
+        .iter()
+        .filter(|s| s.0 > 0)
+        .map(|s| Focus {
+            cells: s.0,
+            centre: s.1.map(|v| (v / s.0 as f64) as f32),
+        })
+        .collect();
+    out.sort_by(|a, b| b.cells.cmp(&a.cells).then(a.centre[0].total_cmp(&b.centre[0])));
+    out
 }
 
 /// Total hormone, both kinds together.
@@ -362,6 +444,7 @@ mod tests {
             ck_light: 0.0,
             ck_block: 0.1,
             shade: 0.0,
+            squeeze_hold: 0.0,
             ..Params::default()
         }
     }
@@ -475,8 +558,9 @@ mod tests {
             };
             Ok(lie(&germinate(&p)?, p.gravity).reach.0)
         };
-        let (hard, soft) = (depth(0.3)?, depth(0.0)?);
-        // Measured 2026-11-25: 22.2 against 26.5.
+        let (hard, soft) = (depth(3.0)?, depth(0.0)?);
+        // Measured 2026-11-25 at a hardness of 3: 20.8 against 24.5. At the default hardness (0.3)
+        // the root is barely slowed (24.2): only the cells of its surface press on the soil.
         eprintln!("root depth: {hard:.1} in a hard soil, {soft:.1} in a soft one");
         assert!(hard <= 0.9 * soft, "{hard} against {soft}");
         Ok(())

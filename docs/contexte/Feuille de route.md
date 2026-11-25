@@ -419,6 +419,103 @@ Limites de cette version : pas de texte ni de légende dans la fenêtre (tout es
 échelles d'auxine et de cytokinine fixes, pas d'ombres portées ni de niveaux de détail, capacité
 de 131 072 cellules, une lecture des cellules par seconde pour le compte et le cadrage.
 
-Prochaine étape : mesurer la couronne (lobes), puis fixer la taille du foyer de la pointe de tige
-(les cellules jeunes retiennent leurs voisines, WUS/CLV3), puis un maximum d'auxine étroit à la
-pointe de racine (fontaine inversée).
+La carte qui abandonne : diagnostic (2026-11-25). Ce n'était ni la capacité ni la grille (un tissu
+entièrement hors de la grille reste exact, test `matches_the_judge_cell_by_cell_far_out_of_the_grid`).
+La chaîne, mesurée relevé par relevé sur la plante de référence puis reproduite à volonté sur une
+boule de cytokinine :
+
+1. des cellules s'entassent : 40 à 55 voisines au lieu d'une douzaine, enfoncées de plus d'un
+   rayon les unes dans les autres ;
+2. la diffusion ferme à chaque pas une part fixe de l'écart avec chaque voisine (`ck_diffusion`
+   0,05) : au-delà de vingt voisines elle dépasse l'équilibre, au-delà de quarante elle diverge.
+   La cytokinine devient négative (−14, puis −2 130, puis −3·10⁸ en 300 pas) ;
+3. toutes les cellules touchées deviennent « jeunes » et se divisent en chaîne (41 500 cellules
+   devenues 106 600 en 1 500 pas), jusqu'à des nombres infinis ; toutes les cellules tombent alors
+   dans la même case de la grille et la carte décroche (« soumission refusée »).
+
+Deux entassements, deux causes :
+
+- Sous terre, le sol retenait toutes les cellules, y compris celles de l'intérieur de la racine,
+  qui ne touchent aucune terre. Ne pouvant faire de place à leur croissance, elles s'empilaient
+  (recouvrement de 1,1 rayon sur l'axe de la racine, 0,46 au bord, 0,16 à l'air). Corrigé : le sol
+  ne retient une cellule qu'à la mesure de ce qu'elle touche de terre (la même estimation que pour
+  la dureté). Remesuré : douze voisines partout dans la racine, 18 au plus sur la plante entière,
+  et la plante sort toujours de terre. La racine s'élargit au lieu de s'empiler.
+- Dans un tissu où tout se divise (la boule), une cellule écrasée par ses voisines continuait de
+  grossir. Cause manquante désignée et validée par Mickaël : la pression des voisines freine la
+  croissance (lot suivant).
+
+Effets de la correction du sol sur les mesures d'avant : le seuil de la boule de cytokinine sans
+ombre passe de 0,01 à 0,03 ; la dureté du sol par défaut (0,3) ne ralentit presque plus la racine
+(24,2 de profondeur contre 24,5 en sol meuble, au lieu de 22,2 contre 26,5 : une partie de l'effet
+venait de l'entassement) ; il faut une dureté de 3 pour 20,8. Un contrôle garde la plante de
+référence (`the_reference_plant_does_not_pile_up` : aucune hormone négative, pas plus de voisines
+que la diffusion n'en supporte ; mesure `checks::packing`).
+
+La sonde `germinate` accepte `capacity=` et `first=` (premier relevé écrit), qui ont servi à
+cerner le pas où tout bascule.
+
+La couronne, mesurée (2026-11-25, trois graines, relevés tous les 500 pas, foyers de cellules
+jeunes suivis d'un relevé à l'autre ; mesure `checks::foci`). Trois sortes de foyers à l'air :
+
+- Une pointe : un foyer reste tout en haut (à moins de 2 du sommet) et monte régulièrement
+  (1,3 à 1,4 par 500 pas). Elle vit de cytokinine (1,17 contre 0,17 d'auxine), en pleine lumière.
+  Mais rien ne fixe sa taille : elle enfle et se vide, de moins de 10 à plus de 130 cellules.
+- Des ramifications, pas des ébauches de feuilles : des morceaux de la pointe restent sur les
+  épaules éclairées de la couronne, hors de l'axe (à 10 à 20 de l'axe pour une tige de 7 à 13 de
+  rayon), y vivent 2 500 à 6 500 pas et montent à leur tour, plus lentement (0,7 à 1,1 par 500
+  pas). Mêmes hormones que la pointe, jamais aplatis, jamais arrêtés, sans espacement régulier :
+  ce sont des pointes secondaires. De 2 à 14 en même temps selon la graine.
+- Inattendu : des foyers tenus par l'auxine (3 à 3,8, à l'ombre) au bas de la tige, qui
+  descendent vers le sol (0,7 à 0,9 par 500 pas) en s'écartant de l'axe. L'auxine faite en haut
+  s'accumule au collet : cela ressemble à des départs de racines adventives. Non étudié.
+
+Rien ne distingue donc une feuille dans ce modèle : pas de tissu qui s'aplatit ni qui s'arrête.
+Un test enregistre la taille qui erre (`the_tip_of_the_stem_has_no_steady_size_yet`) et doit
+casser le jour où la pointe tiendra sa taille.
+
+La pression freine la croissance (2026-11-25, capacité validée par Mickaël). Une cellule sent à
+quel point ses voisines s'enfoncent en elle (la somme des recouvrements) et grandit d'autant
+moins ; elle cesse de grandir quand cette somme atteint `1 / squeeze_hold` de son rayon. C'est la
+loi de Lockhart (1965) réduite à sa conséquence : une cellule pousse sa paroi avec sa pression
+interne, et ce qui appuie en face la retient. Allumée dans le génome par défaut à 1 (choix de
+Claude, sans chiffre du réel).
+
+Mesuré sur la carte :
+
+| Frein de pression | Plante de référence à 24 000 pas | Boule (sans ombre) à 9 000 pas |
+|---|---|---|
+| 0 | 16 400 cellules, 1 600 à l'air | diverge, la carte décroche |
+| 0,5 | 18 300 cellules, 3 100 à l'air | 101 600 cellules, 22 voisines au plus |
+| 1 (défaut) | 11 300 cellules, 3 500 à l'air | 31 600 cellules, 18 voisines au plus |
+| 2 | 5 500 cellules, 3 400 à l'air | 4 500 cellules, 17 voisines au plus |
+| 4 | la graine reste à 4 cellules | |
+
+- La boule ne s'emballe plus : elle grossit au rythme où sa surface peut reculer. Le contrôle
+  d'entassement couvre aussi ce cas.
+- La résistance du sol émerge : le sol retient les cellules du bord de la racine, qui compriment
+  celles de l'intérieur, qui grandissent moins. La racine ralentit et la tige en profite. Plante
+  de référence à 36 000 pas, trois graines : 24 000 à 31 000 cellules, tige de 76 à 78 de haut
+  (7 600 à 12 000 cellules à l'air), racine de 87 de profondeur. Avant, au même effectif : tige
+  de 65, racine de 164. Le réglage `soil_hardness` fait maintenant en partie double emploi.
+- Trop fort (4), deux cellules filles nées l'une dans l'autre ne se séparent plus dans le sol et
+  la graine ne démarre pas.
+- La pointe de tige erre toujours (de 3 à 147 cellules) et laisse toujours des ramifications
+  (4 à 22 foyers à l'air) : le frein de pression n'y change rien.
+
+Vérification : la règle est comparée cellule par cellule sur les tissus de test. Sur 600 pas,
+l'écart statistique entre la carte et le juge passe de moins de 1 % à 2,4 % en effectif (une
+cellule un rien plus pressée se divise plus tard, donc les deux tissus se séparent plus tôt) ; la
+tolérance du test long est portée à 3 %. Les tests de la racine et des cellules allongées
+tournent sans frein de pression (génomes d'avant).
+
+Recherche documentaire (2026-11-25, demandée par Mickaël) : `docs/Modèles scientifiques de
+plantes.md`. Elle nuance la suite : dans tous les modèles publiés, la taille de la pointe de tige
+tient à un repère de surface et à un relais qui monte (WUS), pas à un signal de retenue seul ; et
+le maximum étroit de la racine y est obtenu en imposant le sens des pompes par tissu.
+
+Prochaine étape : fixer la taille du foyer de la pointe de tige (signal de retenue émis par les
+cellules jeunes, validé par Mickaël : CLV3 seul ; à mesurer pour ce qu'il donne, la recherche
+désignant un relais de type WUS comme cause probable si le centre du foyer mûrit avant ses
+bords), puis un maximum d'auxine étroit à la pointe de racine (fontaine inversée). La mesure à
+faire bouger existe : `the_tip_of_the_stem_has_no_steady_size_yet`.

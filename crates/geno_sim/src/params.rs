@@ -74,6 +74,10 @@ pub struct Params {
     pub e_half: f32,
     /// ...and the one above which it is held back by half.
     pub e_block: f32,
+    /// How much the pressure of its neighbours holds back the growth of a cell: growth stops once
+    /// the sum of their overlaps reaches `1 / squeeze_hold` of its radius (0: it grows whatever
+    /// presses on it).
+    pub squeeze_hold: f32,
     /// Share of the way a cell's youth moves per step toward what its auxin calls for (how fast
     /// cells mature, or turn young again).
     pub youth_rate: f32,
@@ -137,6 +141,7 @@ impl Default for Params {
             elong: 0.0,
             e_half: 1.0,
             e_block: 1.0e6,
+            squeeze_hold: 1.0,
             youth_rate: 0.01,
             youth_half: 3.0,
             max_half_length: 1.0,

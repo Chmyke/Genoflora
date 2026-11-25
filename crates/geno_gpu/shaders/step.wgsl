@@ -37,6 +37,7 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     var around = vec3<f32>(0.0);
     var neighbours = 0.0;
     var cover = 0.0;
+    var squeeze = 0.0;
     let qi = pin[i].xyz;
     for (var z = max(c.z - 1, 0); z <= min(c.z + 1, top); z++) {
         for (var y = max(c.y - 1, 0); y <= min(c.y + 1, top); y++) {
@@ -61,6 +62,7 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
                     neighbours += 1.0;
                     cover += max(dot(u, vec3<f32>(P.gx, P.gy, P.gz)), 0.0);
                     let s = rs - d;
+                    squeeze += max(s, 0.0);
                     var f = P.mob_rep * s;
                     if (s <= 0.0) { f = -P.mob_adh * min(-s, reach - d); }
                     disp += (f / d) * dv;
@@ -93,8 +95,9 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     let soil = soil_share(pi.xyz);
     var exposed = 1.0;
     if (neighbours > 0.0) { exposed = sqrt(dot(around, around)) / neighbours; }
-    let held = max(1.0 - P.soil_grip * soil / max(sqrt(dot(disp, disp)), 1e-12), 0.0);
-    let slowed = 1.0 / (1.0 + P.soil_hardness * soil * exposed);
+    let held = max(1.0 - P.soil_grip * soil * exposed / max(sqrt(dot(disp, disp)), 1e-12), 0.0);
+    let free = max(1.0 - P.squeeze_hold * squeeze / pi.w, 0.0);
+    let slowed = free / (1.0 + P.soil_hardness * soil * exposed);
     let even = max(min(pi.w + P.growth * min(drive, 1.0) * slowed, P.r_div), pi.w);
     let old = sh_dir(si);
     let turn = P.align * dot(old, flux);

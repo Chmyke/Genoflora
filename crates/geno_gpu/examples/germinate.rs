@@ -2,7 +2,7 @@
 //! that what emerges can be measured and drawn. Columns: x, y, z, r, auxin, cytokinin, n00, n11,
 //! n22, n01, n02, n12, growth direction xyz, pump polarity xyz, youth, light received.
 //! Usage: cargo run --release -p geno_gpu --example germinate -- <out dir> <steps> <snapshots>
-//!        [polar=0.05] [half_sat=4] [production=..] [decay=..] [diffusion=..] [max=50000]
+//!        [polar=0.05] [half_sat=4] [production=..] [decay=..] [diffusion=..] [max=50000] [capacity=131072] [first=1]
 //! The run stops once `max` cells are alive.
 
 use geno_gpu::{Adapter, GpuSim};
@@ -17,6 +17,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let shots: u32 = args.get(3).map_or(Ok(40), |s| s.parse())?;
     let mut p = Params::default();
     let mut max = usize::MAX;
+    let mut capacity = 1 << 17;
+    let mut first = 1;
     for arg in args.iter().skip(4) {
         let (key, value) = arg.split_once('=').ok_or("expected key=value")?;
         match key {
@@ -48,16 +50,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "youth_half" => p.youth_half = value.parse()?,
             "ck_light" => p.ck_light = value.parse()?,
             "shade" => p.shade = value.parse()?,
+            "squeeze_hold" => p.squeeze_hold = value.parse()?,
             "seed" => p.seed = value.parse()?,
             "max" => max = value.parse()?,
+            "capacity" => capacity = value.parse()?,
+            "first" => first = value.parse()?,
             _ => return Err(format!("unknown parameter {key}").into()),
         }
     }
-    let mut sim = GpuSim::new(&p, &Cells::seed(&p, 1 << 17, 1.0), Adapter::Hardware)?;
+    let mut sim = GpuSim::new(&p, &Cells::seed(&p, capacity, 1.0), Adapter::Hardware)?;
     println!("{}", sim.machine());
     std::fs::create_dir_all(dir)?;
     for shot in 1..=shots {
         run(&mut sim, steps / shots, Some(p.divide_every));
+        if shot < first {
+            continue;
+        }
         let cells = sim.snapshot()?;
         let mut text = String::new();
         let light = light_on(&cells, &p);

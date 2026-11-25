@@ -30,6 +30,8 @@ pub struct Gathered {
     pub neighbours: f32,
     /// How much the neighbours cover the cell from above: each adds how squarely it sits above.
     pub cover: f32,
+    /// How hard the neighbours press on the cell: the sum of how deep each one overlaps it.
+    pub squeeze: f32,
 }
 
 fn dot(a: &[f32], b: &[f32]) -> f32 {
@@ -62,6 +64,7 @@ pub fn interact(me: &Cell, other: &Cell, p: &Params, g: &mut Gathered) {
     g.neighbours += 1.0;
     g.cover += dot(&u, &p.gravity).max(0.0);
     let s = rs - d;
+    g.squeeze += s.max(0.0);
     let pull = (-s).min(reach - d);
     let coef = (if s > 0.0 { p.mob_rep * s } else { -p.mob_adh * pull }) / d;
     g.disp[0] += coef * dv[0];
@@ -115,8 +118,10 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     let (ca, cc) = (hi[0] / volume, hi[1] / volume);
     let ck_push = (cc / (p.ck_half + cc)) * (p.ck_block / (p.ck_block + ca));
     let drive = ca / (p.half_sat + ca) + ck_push;
-    // The soil holds the cell, and pushes back on the walls that press on it rather than on other
-    // cells: a cell surrounded evenly presses on no soil, a lone cell or the tip of a column does.
+    // The soil holds the cell and pushes back on it, but only through the walls that press on soil
+    // rather than on other cells: a cell surrounded evenly touches no soil, a lone cell or the tip
+    // of a column does. Held everywhere, the cells inside a root could not make room for their
+    // growth and piled up (measured 2026-11-25: 40 neighbours, overlaps deeper than a radius).
     let soil = soil::share(p, pi);
     let exposed = if g.neighbours > 0.0 {
         dot(&g.around, &g.around).sqrt() / g.neighbours
@@ -124,8 +129,11 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
         1.0
     };
     let push = dot(&g.disp, &g.disp).sqrt();
-    let held = (1.0 - p.soil_grip * soil / push.max(1e-12)).max(0.0);
-    let slowed = 1.0 / (1.0 + p.soil_hardness * soil * exposed);
+    let held = (1.0 - p.soil_grip * soil * exposed / push.max(1e-12)).max(0.0);
+    // A cell grows by pushing its wall out with its own pressure: what presses back on the wall
+    // holds the growth, and stops it once it matches that pressure (Lockhart 1965).
+    let free = (1.0 - p.squeeze_hold * g.squeeze / pi[3]).max(0.0);
+    let slowed = free / (1.0 + p.soil_hardness * soil * exposed);
     let even = (pi[3] + p.growth * drive.min(1.0) * slowed)
         .min(p.r_div)
         .max(pi[3]);
@@ -598,6 +606,37 @@ mod tests {
         );
         assert!((cells.pr[0][3] - radius(&cells.shape[0])).abs() < 1e-5);
         assert!((extent(&cells.shape[0], &[0.0, 0.0, 1.0]) - 0.91).abs() < 0.05);
+    }
+
+    #[test]
+    fn a_squeezed_cell_grows_less_and_stops_when_pressed_hard_enough() {
+        let p = Params {
+            squeeze_hold: 2.0,
+            ..Params::default()
+        };
+        // A neighbour pressing in from the side, `depth` deep.
+        let grown = |depth: f32| {
+            let me = cell([0.0; 3], 0.9, [50.0, 0.0]);
+            let mut g = Gathered::default();
+            interact(&me, &cell([1.8 - depth, 0.0, 0.0], 0.9, [50.0, 0.0]), &p, &mut g);
+            finish(&me, &g, &p).pr[3] - 0.9
+        };
+        // A neighbour that only touches, or pulls from a gap, holds nothing back.
+        assert_eq!(grown(0.0), grown(-0.1));
+        assert!(grown(0.0) > 0.0);
+        assert!(grown(0.2) < grown(0.0) && grown(0.2) > 0.0);
+        // Growth stops once the overlap reaches 1 / squeeze_hold of the radius.
+        assert_eq!(grown(0.45), 0.0);
+        assert_eq!(grown(0.6), 0.0);
+        // A cell that does not sense the pressure grows whatever presses on it.
+        let numb = Params {
+            squeeze_hold: 0.0,
+            ..Params::default()
+        };
+        let me = cell([0.0; 3], 0.9, [50.0, 0.0]);
+        let mut g = Gathered::default();
+        interact(&me, &cell([1.2, 0.0, 0.0], 0.9, [50.0, 0.0]), &numb, &mut g);
+        assert!(finish(&me, &g, &numb).pr[3] > 0.9);
     }
 
     #[test]

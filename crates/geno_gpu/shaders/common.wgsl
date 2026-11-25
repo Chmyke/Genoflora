@@ -10,7 +10,7 @@ struct Params {
     e_block: f32, max_half_length: f32, pin_rate: f32, pin_switch: f32,
     flux_half: f32, gravisense: f32, surface: f32, soil_grip: f32,
     soil_hardness: f32, light_production: f32, light_depth: f32, youth_rate: f32,
-    youth_half: f32, ck_light: f32, shade: f32, pad0: u32,
+    youth_half: f32, ck_light: f32, shade: f32, squeeze_hold: f32,
 }
 struct State { count: u32, epoch: u32, pad0: u32, pad1: u32 }
 // h = hormone amounts (auxin, cytokinin).
