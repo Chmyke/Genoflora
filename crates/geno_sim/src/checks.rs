@@ -445,10 +445,35 @@ mod tests {
         Ok(())
     }
 
+    // Light-made auxin: the top of the seed, just under the surface, gets some light and makes
+    // more auxin, so it grows too, against the root anchored below. Measured 2026-11-25 on three
+    // seeds: a third to a half of the cells end above the surface (none without light). What
+    // comes out is a mass, not a shoot: see docs/contexte/Feuille de route.md.
+    #[test]
+    fn light_made_auxin_lifts_part_of_the_plant_out_of_the_soil() -> Result<(), EngineError> {
+        let p = Params {
+            gravisense: 0.1,
+            light_production: 0.03,
+            ..frugal()
+        };
+        let cells = germinate(&p)?;
+        let out = cells
+            .alive()
+            .iter()
+            .filter(|q| crate::soil::share(&p, &q[..3]) < 0.5)
+            .count();
+        assert!(
+            out * 5 >= cells.count,
+            "{out} of {} cells above the surface",
+            cells.count
+        );
+        Ok(())
+    }
+
     // Measured 2026-11-25 on three seeds and six soils: at most two cells ever break the surface.
     // The root only grows at its tip, where the auxin gathers; the top of the seed, drained of
     // auxin, does not grow, so nothing pushes up against the hold of the soil. This test records
-    // that; it is expected to break the day a shoot emerges.
+    // that; it is expected to break the day a shoot emerges (light-made auxin off).
     #[test]
     fn nothing_comes_out_of_the_soil_yet() -> Result<(), EngineError> {
         let p = frugal();

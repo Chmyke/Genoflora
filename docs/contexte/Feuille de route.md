@@ -193,7 +193,7 @@ comparaison exacte GPU contre juge tient 60 pas sur un tissu, au-delà elle est 
 arrondit un peu moins finement). La longueur d'une cellule est calculée par rotations de Jacobi :
 la formule directe était fausse de 0,2 % pour les cellules plates, et décidait des divisions.
 
-Limites : la lumière n'agit encore sur rien ; le juge compare toutes les paires (petits tissus seulement) ;
+Limites : le juge compare toutes les paires (petits tissus seulement) ;
 la grille GPU grossit avec l'étirement maximal, donc le calcul ralentit.
 
 Sol et air (2026-11-25, piste A2, contenu validé par Mickaël : ancrage et lumière sans capacité
@@ -210,8 +210,7 @@ nouvelle, graine juste sous la surface, frottement et dureté). Tout est de l'en
   grandit plus lentement (`soil_hardness`). « Presser sur la terre » est estimé par le
   déséquilibre de ses voisines : entourée de tous côtés, elle n'est pas exposée ; seule, ou à la
   pointe d'une colonne, elle l'est.
-- Lumière : pleine dans l'air, divisée par e à chaque `light_depth` de profondeur. Aucune règle
-  ne l'utilise encore.
+- Lumière : pleine dans l'air, divisée par e à chaque `light_depth` de profondeur.
 
 Les réglages par défaut (prise 0,02, dureté 0,3, lumière 1) sont choisis par Claude, sans chiffre
 du réel.
@@ -229,14 +228,44 @@ Vérification : sur la carte, la dureté fait entrer une racine carrée et une d
 croissance ; la carte les arrondit moins finement, et une division y bascule d'un pas au pas 34
 (identique sur 60 pas sans sol). La comparaison exacte tient 30 pas sur la carte, 60 sur WARP.
 
-Prochaine étape, à trancher : un second foyer de croissance en haut. Deux pistes, toutes deux
-des capacités de cellule à valider :
+Lumière et auxine (2026-11-25, piste choisie par Mickaël). Une capacité de cellule : elle
+fabrique de l'auxine partout, et davantage à la lumière (`light_production`, par unité de volume
+en pleine lumière ; la lumière nourrit les sucres dont l'auxine est faite). Éteinte dans le
+génome par défaut, en attendant la décision de Mickaël.
 
-- La lumière fabrique l'auxine : une cellule éclairée en fabrique davantage (dans une vraie
-  plantule, cotylédons et pointe de tige en sont les sources). Le haut de la graine, à un demi-rayon
-  sous la surface, reçoit déjà de la lumière (environ 0,6) : il deviendrait une source, la racine
-  un puits, de quoi donner à la canalisation ses deux bouts.
-- L'identité des cellules : une vraie graine sépare déjà tige et racine dans l'embryon. Une
-  identité qui émergerait du rapport auxine/cytokinine (Skoog et Miller) ferait réagir
-  différemment les deux bouts ; mais la cytokinine seule a déjà échoué (elle reste près de la
-  racine).
+Mesuré, juge (1 024 cellules, trois graines, génome à cellules rondes) :
+
+| Gravité sur les pompes | Lumière → auxine | Cellules sorties de terre | Hauteur au-dessus du sol |
+|---|---|---|---|
+| 0,3 | 0 à 0,01 | 0 | aucune |
+| 0,3 | 0,03 | 1 à 11 | 0,1 à 2,3 |
+| 0,3 | 0,1 | 52 à 121 | 5 à 7 |
+| 0,1 | 0,03 à 0,3 | 333 à 492 (un tiers à la moitié) | 10 à 12 |
+
+Sur la carte, plus grand (`docs/images/Lumière et auxine*.png`) :
+
+- Cellules rondes, gravité 0,1, lumière 0,03 : une masse ronde qui perce la surface (2 200 de
+  28 500 cellules à l'air, jusqu'à 12,5 au-dessus, aussi large que haute), comme un tubercule.
+- Cellules allongées, gravité 0,3, lumière 0,03 : une seule colonne épaisse qui traverse la
+  surface, la racine en bas (auxine à sa pointe), le haut à 24 au-dessus du sol (4 600 de 27 800
+  cellules à l'air). La plante grandit par ses deux bouts pour la première fois, mais en un seul
+  corps épais : pas de tige distincte, pas de pointe en haut (l'auxine du haut est renvoyée vers
+  le bas par les pompes : 0,3 à la pointe du haut contre 35 à celle de la racine).
+
+Ce qui manque encore pour une tige : une pointe en haut où l'auxine reste. Les pompes, qui
+penchent toutes vers le bas, vident le haut. Dans une vraie tige, l'auxine descend aussi, mais la
+pointe de la tige garde son propre foyer (méristème, WUS/CLV3) et ses cellules ne réagissent pas
+à l'auxine comme celles de la racine.
+
+Vérification : la règle est comparée cellule par cellule sur le tissu de test, qui chevauche la
+surface. La germination exacte sur WARP reste sans lumière : l'exponentielle de WARP diffère de
+celle du processeur de quelques millionièmes, assez pour faire basculer une division au pas 1 300.
+
+Observé sans le corriger : deux essais à grande taille sur la carte se sont arrêtés (attente du
+GPU dépassée, puis soumission refusée). Cause probable : la grille qui grossit avec l'étirement
+des cellules (limite déjà notée). À traiter avant de viser le million de cellules.
+
+Prochaine étape, à trancher : allumer ou non la lumière → auxine dans le génome par défaut, puis
+donner au haut une pointe à lui. Piste : l'identité des cellules (tige ou racine), qui émergerait
+de ce qu'une cellule a vécu (lumière reçue, rapport auxine/cytokinine) et changerait sa réaction à
+l'auxine ; la cytokinine seule a déjà échoué parce qu'elle restait près de la racine.

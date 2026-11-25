@@ -126,8 +126,8 @@ fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
         f(p.surface),
         f(p.soil_grip),
         f(p.soil_hardness),
-        u(0),
-        u(0),
+        f(p.light_production),
+        f(p.light_depth),
         u(0),
     ]
     .concat()

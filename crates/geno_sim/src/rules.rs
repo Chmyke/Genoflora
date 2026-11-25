@@ -98,8 +98,9 @@ pub fn interact(me: &Cell, other: &Cell, p: &Params, g: &mut Gathered) {
 pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     let (pi, s, hi) = (&me.pr, &me.shape, &me.h);
     let volume = pi[3] * pi[3] * pi[3];
-    let auxin =
-        hi[0] + p.diffusion * g.spread[0] + p.polar * g.pumped + p.production * volume - p.decay * hi[0];
+    // Auxin is made everywhere, more where light reaches the cell.
+    let made = (p.production + p.light_production * soil::light(p, pi)) * volume;
+    let auxin = hi[0] + p.diffusion * g.spread[0] + p.polar * g.pumped + made - p.decay * hi[0];
     // Cytokinin is made where auxin is, then wanders with no preferred direction.
     let cytokinin = hi[1] + p.ck_diffusion * g.spread[1] + p.ck_production * hi[0] - p.ck_decay * hi[1];
     // Even growth, up to the dividing size: holding a lot of auxin, or holding cytokinin while
@@ -372,6 +373,19 @@ mod tests {
         let mut g = Gathered::default();
         interact(&big, &small, &p, &mut g);
         assert!(g.spread[0].abs() < 1e-6, "{g:?}");
+    }
+
+    #[test]
+    fn a_lit_cell_makes_more_auxin_than_one_in_the_dark() {
+        let p = Params {
+            light_production: 0.01,
+            ..Params::default()
+        };
+        let made =
+            |height: f32| finish(&cell([0.0, height, 0.0], 1.0, [0.0; 2]), &Gathered::default(), &p).h[0];
+        let (lit, dark) = (made(p.surface + 3.0), made(p.surface - 10.0));
+        assert!((lit - p.production - p.light_production).abs() < 1e-6, "{lit}");
+        assert!((dark - p.production).abs() < 1e-5, "{dark}");
     }
 
     #[test]

@@ -19,7 +19,7 @@ pub fn share(p: &Params, at: &[f32]) -> f32 {
 }
 
 /// Light reaching a point, from 1 in the open air: the soil dims it by a factor e every
-/// `light_depth` of depth. No rule uses it yet.
+/// `light_depth` of depth.
 pub fn light(p: &Params, at: &[f32]) -> f32 {
     let depth = (p.surface - height(p, at)).max(0.0);
     (-depth / p.light_depth).exp()

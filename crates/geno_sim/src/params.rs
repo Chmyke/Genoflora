@@ -42,8 +42,11 @@ pub struct Params {
     /// How far the heavy grains settled on the lower side of a cell pull its pumps down (0: the
     /// cell does not sense gravity).
     pub gravisense: f32,
-    /// Hormone every cell makes per step, per unit of its volume.
+    /// Auxin every cell makes per step, per unit of its volume, in the dark.
     pub production: f32,
+    /// Auxin a cell makes on top of that, per step, per unit of its volume, in full light (light
+    /// feeds the sugars from which auxin is made).
+    pub light_production: f32,
     /// Fraction of hormone lost per step.
     pub decay: f32,
     /// Cytokinin a cell makes per step, per unit of auxin it holds.
@@ -104,6 +107,7 @@ impl Default for Params {
             flux_half: 0.01,
             gravisense: 0.3,
             production: 0.001,
+            light_production: 0.0,
             decay: 0.001,
             // Off in the default genome: measured on 2026-11-25, cytokinin that only diffuses
             // makes no second pole (see docs/contexte/Feuille de route.md).

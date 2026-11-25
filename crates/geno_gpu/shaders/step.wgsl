@@ -76,7 +76,8 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
             }
         }
     }
-    let auxin = hi.x + P.diffusion * spread.x + P.polar * pumped + P.production * vi - P.decay * hi.x;
+    let made = (P.production + P.light_production * light(pi.xyz)) * vi;
+    let auxin = hi.x + P.diffusion * spread.x + P.polar * pumped + made - P.decay * hi.x;
     let cytokinin = hi.y + P.ck_diffusion * spread.y + P.ck_production * hi.x - P.ck_decay * hi.y;
     hh_out[i] = vec2<f32>(auxin, cytokinin);
     let ca = hi.x / vi;

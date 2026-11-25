@@ -56,7 +56,11 @@ fn engine(p: &Params, n: usize, capacity: usize, adapter: Adapter) -> Result<Gpu
 #[test]
 fn matches_the_judge_cell_by_cell_on_a_short_run() -> Result<(), EngineError> {
     on_each_adapter(|adapter| {
-        let p = Params::default();
+        // The test tissue straddles the soil surface: part of it in the dark, part in the light.
+        let p = Params {
+            light_production: 0.03,
+            ..Params::default()
+        };
         let start = lattice(500, 4096, &p);
         let gap = gap_to_judge(
             &mut GpuSim::new(&p, &start, adapter)?,
@@ -159,6 +163,9 @@ fn same_inputs_same_bits_on_the_same_machine() -> Result<(), EngineError> {
 fn a_seed_germinates_like_on_the_judge() -> Result<(), EngineError> {
     on_each_adapter(|adapter| {
         // Cytokinin switched on, so the judge and the shaders are compared on both hormones.
+        // Light-made auxin stays off: WARP's exponential differs from the CPU's by a few parts in
+        // a million, enough to tip a division at step 1300 (measured 2026-11-25). The light rule is
+        // compared cell by cell on the short runs.
         let p = Params {
             half_sat: 10.0,
             polar: 0.1,
