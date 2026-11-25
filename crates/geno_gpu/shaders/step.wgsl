@@ -36,6 +36,7 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     var richness = 0.0;
     var around = vec3<f32>(0.0);
     var neighbours = 0.0;
+    var cover = 0.0;
     let qi = pin[i].xyz;
     for (var z = max(c.z - 1, 0); z <= min(c.z + 1, top); z++) {
         for (var y = max(c.y - 1, 0); y <= min(c.y + 1, top); y++) {
@@ -58,6 +59,7 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
                     if (d >= reach) { continue; }
                     around += u;
                     neighbours += 1.0;
+                    cover += max(dot(u, vec3<f32>(P.gx, P.gy, P.gz)), 0.0);
                     let s = rs - d;
                     var f = P.mob_rep * s;
                     if (s <= 0.0) { f = -P.mob_adh * min(-s, reach - d); }
@@ -78,7 +80,7 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
             }
         }
     }
-    let lit = light(pi.xyz);
+    let lit = light(pi.xyz) * exp(-P.shade * cover);
     let made = (P.production + P.light_production * lit) * vi;
     let auxin = hi.x + P.diffusion * spread.x + P.polar * pumped + made - P.decay * hi.x;
     let cytokinin = hi.y + P.ck_diffusion * spread.y + P.ck_production * hi.x + P.ck_light * lit * vi - P.ck_decay * hi.y;

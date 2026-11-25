@@ -117,19 +117,23 @@ fn light_made_cytokinin_wakes_the_top_into_a_ball_not_a_shoot() -> Result<(), En
     let Some(cells) = grow(&p)? else {
         return Ok(());
     };
+    let (air, height, across) = aerial(&cells, &p);
+    eprintln!("aerial part: {air} cells, height {height:.1}, spread across {across:.1}");
+    assert!(air * 3 >= cells.count, "{air} of {} in the air", cells.count);
+    // As wide as it is tall.
+    assert!(height <= 3.0 * across, "height {height}, spread {across}");
+    Ok(())
+}
+
+/// The part of the plant above the soil: how many cells, how high it reaches above the surface,
+/// and its spread across (root mean square distance to its vertical axis).
+fn aerial(cells: &Cells, p: &Params) -> (usize, f32, f32) {
     let air: Vec<_> = cells
         .alive()
         .iter()
-        .filter(|q| geno_sim::soil::share(&p, &q[..3]) < 0.5)
+        .filter(|q| geno_sim::soil::share(p, &q[..3]) < 0.5)
         .collect();
-    assert!(
-        air.len() * 3 >= cells.count,
-        "{} of {} in the air",
-        air.len(),
-        cells.count
-    );
-    // As wide as it is tall: twice the spread across against the height.
-    let n = air.len() as f32;
+    let n = air.len().max(1) as f32;
     let mean = [0, 2].map(|k| air.iter().map(|q| q[k]).sum::<f32>() / n);
     let across = (air
         .iter()
@@ -137,11 +141,38 @@ fn light_made_cytokinin_wakes_the_top_into_a_ball_not_a_shoot() -> Result<(), En
         .sum::<f32>()
         / n)
         .sqrt();
-    let height = air.iter().map(|q| q[1]).fold(f32::MIN, f32::max) - p.surface;
-    eprintln!(
-        "aerial part: {} cells, height {height:.1}, spread across {across:.1}",
-        air.len()
-    );
-    assert!(height <= 3.0 * across, "height {height}, spread {across}");
+    let height = air.iter().map(|q| q[1]).fold(p.surface, f32::max) - p.surface;
+    (air.len(), height, across)
+}
+
+// Nothing says "grow up" or "make a stem". Cells cast a shadow on those below them, so only the
+// cells on top stay lit, make cytokinin and stay young; those they leave behind mature. The young
+// top keeps climbing on what it has laid down: a stem, while the root goes down.
+#[test]
+fn shaded_cells_mature_and_a_stem_rises_from_the_lit_top() -> Result<(), EngineError> {
+    for seed in 1..=3 {
+        let p = Params {
+            seed,
+            youth_rate: 0.01,
+            youth_half: 3.0,
+            ck_light: 0.03,
+            ck_block: 1.0,
+            shade: 3.0,
+            ..stretching()
+        };
+        let Some(cells) = grow(&p)? else {
+            return Ok(());
+        };
+        let (air, height, across) = aerial(&cells, &p);
+        let depth = lie(&cells, p.gravity).reach.0;
+        eprintln!(
+            "seed {seed}: {air} cells in the air, height {height:.1}, across {across:.1}, root {depth:.0}"
+        );
+        assert!(
+            air >= 200 && height >= 2.5 * across,
+            "seed {seed}: {air} cells, height {height}, across {across}"
+        );
+        assert!(depth >= 30.0, "seed {seed}: root only {depth} deep");
+    }
     Ok(())
 }

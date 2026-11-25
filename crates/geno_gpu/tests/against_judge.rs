@@ -63,6 +63,7 @@ fn matches_the_judge_cell_by_cell_on_a_short_run() -> Result<(), EngineError> {
             youth_rate: 0.05,
             ck_light: 0.001,
             ck_half: 20.0,
+            shade: 0.5,
             ..Params::default()
         };
         let start = lattice(500, 4096, &p);

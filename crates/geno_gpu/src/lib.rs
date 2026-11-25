@@ -133,7 +133,7 @@ fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
         f(p.youth_rate),
         f(p.youth_half),
         f(p.ck_light),
-        u(0),
+        f(p.shade),
         u(0),
     ]
     .concat()

@@ -28,6 +28,8 @@ pub struct Gathered {
     pub around: [f32; 3],
     /// ...and how many neighbours there are.
     pub neighbours: f32,
+    /// How much the neighbours cover the cell from above: each adds how squarely it sits above.
+    pub cover: f32,
 }
 
 fn dot(a: &[f32], b: &[f32]) -> f32 {
@@ -58,6 +60,7 @@ pub fn interact(me: &Cell, other: &Cell, p: &Params, g: &mut Gathered) {
     g.around[1] += u[1];
     g.around[2] += u[2];
     g.neighbours += 1.0;
+    g.cover += dot(&u, &p.gravity).max(0.0);
     let s = rs - d;
     let pull = (-s).min(reach - d);
     let coef = (if s > 0.0 { p.mob_rep * s } else { -p.mob_adh * pull }) / d;
@@ -99,7 +102,7 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     let (pi, s, hi) = (&me.pr, &me.shape, &me.h);
     let volume = pi[3] * pi[3] * pi[3];
     // Auxin is made everywhere, more where light reaches the cell.
-    let lit = soil::light(p, pi);
+    let lit = soil::shaded(p, soil::light(p, pi), g.cover);
     let made = (p.production + p.light_production * lit) * volume;
     let auxin = hi[0] + p.diffusion * g.spread[0] + p.polar * g.pumped + made - p.decay * hi[0];
     // Cytokinin is made where auxin is and where light reaches the cell, then wanders with no
@@ -452,6 +455,33 @@ mod tests {
         divide(&mut cells, &p, 1);
         assert_eq!(cells.count, 2);
         assert_eq!(cells.youth[1], 0.8);
+    }
+
+    #[test]
+    fn a_cell_under_another_gets_less_light() {
+        let p = Params {
+            ck_light: 0.01,
+            shade: 1.0,
+            diffusion: 0.0,
+            ck_diffusion: 0.0,
+            ..Params::default()
+        };
+        let h = p.surface + 5.0;
+        let (top, under, beside) = (
+            cell([0.0, h + 2.0, 0.0], 1.0, [0.0; 2]),
+            cell([0.0, h, 0.0], 1.0, [0.0; 2]),
+            cell([2.0, h, 0.0], 1.0, [0.0; 2]),
+        );
+        let made = |me: &Cell, other: &Cell| {
+            let mut g = Gathered::default();
+            interact(me, other, &p, &mut g);
+            finish(me, &g, &p).h[1]
+        };
+        // The one on top is in full light, the one under it is dimmed by e, a neighbour at the
+        // same height casts no shadow.
+        assert!((made(&top, &under) - 0.01).abs() < 1e-6);
+        assert!((made(&under, &top) - 0.01 * (-1.0f32).exp()).abs() < 1e-6);
+        assert!((made(&under, &beside) - 0.01).abs() < 1e-6);
     }
 
     #[test]

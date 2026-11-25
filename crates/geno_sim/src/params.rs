@@ -101,6 +101,9 @@ pub struct Params {
     pub soil_hardness: f32,
     /// Depth over which the soil dims the light by a factor e (environment).
     pub light_depth: f32,
+    /// How much a cell lying straight above another dims its light: the light is divided by e for
+    /// each `1 / shade` of such cover (environment; 0: cells cast no shadow).
+    pub shade: f32,
 }
 
 impl Default for Params {
@@ -147,6 +150,8 @@ impl Default for Params {
             soil_grip: 0.02,
             soil_hardness: 0.3,
             light_depth: 1.0,
+            // Off until measured.
+            shade: 0.0,
         }
     }
 }

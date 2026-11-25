@@ -25,6 +25,12 @@ pub fn light(p: &Params, at: &[f32]) -> f32 {
     (-depth / p.light_depth).exp()
 }
 
+/// Light left under the cells that cover a cell: `cover` adds up, over its neighbours, how
+/// squarely each one sits above it (light comes from above).
+pub fn shaded(p: &Params, light: f32, cover: f32) -> f32 {
+    light * (-p.shade * cover).exp()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
