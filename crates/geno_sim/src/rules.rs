@@ -13,11 +13,16 @@ pub struct Gathered {
     /// Sum over the neighbours of the hormone each would send by passive diffusion, per unit of
     /// diffusion rate.
     pub spread: [f32; 2],
-    /// Auxin received from the neighbours above minus auxin handed to those below.
-    pub fall: f32,
+    /// Auxin pumped in by the neighbours minus auxin pumped out to them (PIN transport).
+    pub pumped: f32,
     /// Net auxin flow through the cell, as a vector (sum of what each neighbour sends, along the
     /// line from that neighbour to the cell).
     pub flux: [f32; 3],
+    /// Sum over the neighbours of their auxin concentration times the unit vector from the cell
+    /// to them...
+    pub richer: [f32; 3],
+    /// ...and the sum of those concentrations.
+    pub richness: f32,
 }
 
 fn dot(a: &[f32], b: &[f32]) -> f32 {
@@ -62,11 +67,17 @@ pub fn interact(me: &Cell, other: &Cell, p: &Params, g: &mut Gathered) {
     ];
     g.spread[0] += gap[0];
     g.spread[1] += gap[1];
-    // How much `me` sits above `other`, from -1 to 1. Both cells compute exact opposites, so what
-    // one hands over is exactly what the other receives.
-    let above = dot(&dv, &p.gravity) / -d;
-    let moved = hj[0] * (-above).max(0.0) - hi[0] * above.max(0.0);
-    g.fall += moved;
+    // Active transport: each cell pumps auxin out on the side its pumps sit, in proportion to how
+    // squarely the neighbour faces that side. `u` points from `other` to `me`. Both cells compute
+    // exact opposites, so what one pumps out is exactly what the other receives.
+    let (qi, qj) = (&me.pin, &other.pin);
+    let moved = hj[0] * dot(qj, &u).max(0.0) - hi[0] * (-dot(qi, &u)).max(0.0);
+    g.pumped += moved;
+    let cj = hj[0] / vj;
+    g.richer[0] -= cj * u[0];
+    g.richer[1] -= cj * u[1];
+    g.richer[2] -= cj * u[2];
+    g.richness += cj;
     let sent = p.diffusion * gap[0] + p.polar * moved;
     g.flux[0] += sent * u[0];
     g.flux[1] += sent * u[1];
@@ -79,7 +90,7 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     let (pi, s, hi) = (&me.pr, &me.shape, &me.h);
     let volume = pi[3] * pi[3] * pi[3];
     let auxin =
-        hi[0] + p.diffusion * g.spread[0] + p.polar * g.fall + p.production * volume - p.decay * hi[0];
+        hi[0] + p.diffusion * g.spread[0] + p.polar * g.pumped + p.production * volume - p.decay * hi[0];
     // Cytokinin is made where auxin is, then wanders with no preferred direction.
     let cytokinin = hi[1] + p.ck_diffusion * g.spread[1] + p.ck_production * hi[0] - p.ck_decay * hi[1];
     // Even growth, up to the dividing size: holding a lot of auxin, or holding cytokinin while
@@ -103,6 +114,7 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     let room = (1.0 - s[HALF] / (p.r_div * p.max_half_length)).max(0.0);
     let eps = p.elong * (ca / (p.e_half + ca)) * (p.e_block / (p.e_block + ca)) * room;
     let shape = with_dir(&grow_along(&grow_even(s, even / pi[3]), &a, eps), a);
+    let pin = polarise(me, g, p, ca);
     Cell {
         pr: [
             pi[0] + g.disp[0],
@@ -112,7 +124,31 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
         ],
         shape,
         h: [auxin, cytokinin],
+        pin,
     }
+}
+
+/// The pumps move toward a target made of two ways of placing them, both at work in every cell
+/// (Bayer et al. 2009), plus the pull of gravity:
+/// - toward the neighbours that hold the most auxin (up the gradient, Jönsson et al. 2006),
+///   which wins while the cell holds little auxin;
+/// - along the auxin already flowing through the cell (with the flux, canalisation, Mitchison
+///   1980), which wins once it holds a lot: the more auxin flows one way, the more is pumped
+///   that way;
+/// - toward the lower side, where the heavy grains of the cell settle (statoliths).
+///
+/// The polarity never gets longer than one (all the pumps on one side).
+fn polarise(me: &Cell, g: &Gathered, p: &Params, auxin: f32) -> [f32; 4] {
+    let follow = auxin / (p.pin_switch + auxin);
+    let uphill = (1.0 - follow) / g.richness.max(1e-12);
+    let strength = dot(&g.flux, &g.flux).sqrt();
+    let along = follow / (p.flux_half + strength);
+    let q = &me.pin;
+    let t = [0, 1, 2].map(|k| uphill * g.richer[k] + along * g.flux[k] + p.gravisense * p.gravity[k]);
+    let n = [0, 1, 2].map(|k| q[k] + p.pin_rate * (t[k] - q[k]));
+    let len = dot(&n, &n).sqrt();
+    let keep = if len > 1.0 { 1.0 / len } else { 1.0 };
+    [n[0] * keep, n[1] * keep, n[2] * keep, 0.0]
 }
 
 /// One division round, in index order. A cell divides when it reaches the dividing size or its
@@ -140,12 +176,14 @@ pub fn divide(cells: &mut Cells, p: &Params, epoch: u32) {
             let shape = grow_along(&s, &d, -0.5);
             let r = m[3] * INV_CBRT2;
             let h = cells.h[i].map(|v| v * 0.5);
+            let pin = cells.pin[i];
             cells.set(
                 i,
                 Cell {
                     pr: [m[0] - o[0], m[1] - o[1], m[2] - o[2], r],
                     shape,
                     h,
+                    pin,
                 },
             );
             cells.set(
@@ -154,6 +192,7 @@ pub fn divide(cells: &mut Cells, p: &Params, epoch: u32) {
                     pr: [m[0] + o[0], m[1] + o[1], m[2] + o[2], r],
                     shape,
                     h,
+                    pin,
                 },
             );
         }
@@ -171,6 +210,7 @@ mod tests {
             pr: [at[0], at[1], at[2], r],
             shape: sphere(r, [1.0, 0.0, 0.0]),
             h,
+            pin: [0.0; 4],
         }
     }
 
@@ -195,16 +235,21 @@ mod tests {
     }
 
     #[test]
-    fn auxin_falls_to_the_cell_below_and_none_is_lost() {
+    fn pumps_hand_auxin_to_the_side_they_sit_on_and_none_is_lost() {
         let p = Params {
             diffusion: 0.0,
             production: 0.0,
             decay: 0.0,
             ..Params::default()
         };
+        // Both cells pump down: the top one hands auxin to the bottom one, which faces no one.
+        let down = |c: Cell| Cell {
+            pin: [0.0, -1.0, 0.0, 0.0],
+            ..c
+        };
         let (top, bottom) = (
-            cell([0.0, 1.0, 0.0], 1.0, [1.0, 0.0]),
-            cell([0.0, -1.0, 0.0], 1.0, [1.0, 0.0]),
+            down(cell([0.0, 1.0, 0.0], 1.0, [1.0, 0.0])),
+            down(cell([0.0, -1.0, 0.0], 1.0, [1.0, 0.0])),
         );
         let (mut a, mut b) = (Gathered::default(), Gathered::default());
         interact(&top, &bottom, &p, &mut a);
@@ -214,6 +259,81 @@ mod tests {
         assert!((ha + hb - 2.0).abs() < 1e-6);
         // The flow through both cells points down.
         assert!(a.flux[1] < 0.0 && b.flux[1] < 0.0, "{a:?} {b:?}");
+    }
+
+    #[test]
+    fn cells_without_polarity_pump_nothing() {
+        let p = Params {
+            diffusion: 0.0,
+            ..Params::default()
+        };
+        let mut g = Gathered::default();
+        interact(
+            &cell([0.0, 1.0, 0.0], 1.0, [1.0, 0.0]),
+            &cell([0.0, -1.0, 0.0], 1.0, [5.0, 0.0]),
+            &p,
+            &mut g,
+        );
+        assert_eq!(g.pumped, 0.0);
+    }
+
+    /// Where the pumps of a lone cell head after `steps` steps, given what it gathered.
+    fn pumps_after(p: &Params, auxin: f32, g: &Gathered, steps: u32) -> [f32; 4] {
+        let mut c = cell([0.0; 3], 1.0, [auxin, 0.0]);
+        for _ in 0..steps {
+            c.pin = finish(&c, g, p).pin;
+        }
+        c.pin
+    }
+
+    #[test]
+    fn a_cell_poor_in_auxin_turns_its_pumps_toward_its_richest_neighbours() {
+        let p = Params {
+            gravisense: 0.0,
+            ..Params::default()
+        };
+        // A rich neighbour on +x, a poor one on -x, flow along +z.
+        let g = Gathered {
+            richer: [3.0 - 1.0, 0.0, 0.0],
+            richness: 4.0,
+            flux: [0.0, 0.0, 1.0],
+            ..Gathered::default()
+        };
+        let q = pumps_after(&p, 0.01, &g, 2000);
+        assert!(q[0] > 0.4 && q[0] > 10.0 * q[2].abs(), "{q:?}");
+        // Rich in auxin, the same cell follows the flow instead.
+        let q = pumps_after(&p, 100.0, &g, 2000);
+        assert!(q[2] > 0.9 && q[2] > 10.0 * q[0].abs(), "{q:?}");
+    }
+
+    #[test]
+    fn gravity_only_pulls_the_pumps_of_a_cell_that_senses_it() {
+        let g = Gathered::default();
+        let numb = Params {
+            gravisense: 0.0,
+            ..Params::default()
+        };
+        assert_eq!(pumps_after(&numb, 1.0, &g, 500), [0.0; 4]);
+        let p = Params::default();
+        let q = pumps_after(&p, 1.0, &g, 1000);
+        assert!((q[1] + p.gravisense).abs() < 0.01, "{q:?}");
+        // The pumps move over time, not at once: the cell remembers where they were.
+        let q = pumps_after(&p, 1.0, &g, 10);
+        assert!(q[1] < -0.01 * p.gravisense && q[1] > -0.5 * p.gravisense, "{q:?}");
+    }
+
+    #[test]
+    fn the_polarity_never_gets_longer_than_one() {
+        let p = Params {
+            gravisense: 5.0,
+            ..Params::default()
+        };
+        let g = Gathered {
+            flux: [1.0, 0.0, 0.0],
+            ..Gathered::default()
+        };
+        let q = pumps_after(&p, 100.0, &g, 5000);
+        assert!(dot(&q, &q) <= 1.0 + 1e-6, "{q:?}");
     }
 
     #[test]

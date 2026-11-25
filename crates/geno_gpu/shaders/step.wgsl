@@ -1,5 +1,5 @@
 // One step for every cell: gather neighbours (no float atomics), mechanics, hormone diffusion and
-// fall, growth, turning of the growth direction. Reads the current buffers, writes the next ones.
+// pumping, growth, turning of the growth direction, moving of the pumps. Reads the current buffers, writes the next ones.
 // Mirrors geno_sim::rules::{interact, finish}.
 @group(0) @binding(1) var<storage, read> S: State;
 @group(0) @binding(2) var<storage, read> pos: array<vec4<f32>>;
@@ -12,6 +12,9 @@
 @group(0) @binding(9) var<storage, read> shape: array<Shape>;
 @group(0) @binding(10) var<storage, read> sshape: array<Shape>;
 @group(0) @binding(11) var<storage, read_write> shape_out: array<Shape>;
+// Pump polarity (xyz; w unused), read by cell id: neighbours are looked up unsorted.
+@group(0) @binding(12) var<storage, read> pin: array<vec4<f32>>;
+@group(0) @binding(13) var<storage, read_write> pin_out: array<vec4<f32>>;
 
 @compute @workgroup_size(256)
 fn step(@builtin(global_invocation_id) g: vec3<u32>) {
@@ -25,9 +28,11 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     let top = i32(P.g1) - 1;
     var disp = vec3<f32>(0.0);
     var spread = vec2<f32>(0.0);
-    var fall = 0.0;
+    var pumped = 0.0;
     var flux = vec3<f32>(0.0);
-    let down = vec3<f32>(P.gx, P.gy, P.gz);
+    var richer = vec3<f32>(0.0);
+    var richness = 0.0;
+    let qi = pin[i].xyz;
     for (var z = max(c.z - 1, 0); z <= min(c.z + 1, top); z++) {
         for (var y = max(c.y - 1, 0); y <= min(c.y + 1, top); y++) {
             for (var x = max(c.x - 1, 0); x <= min(c.x + 1, top); x++) {
@@ -55,16 +60,19 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
                     let level = 2.0 * vi * vj / (vi + vj);
                     let gap = (t.h / vj - hi / vi) * level;
                     spread += gap;
-                    let above = dot(dv, down) / -d;
-                    let moved = t.h.x * max(-above, 0.0) - hi.x * max(above, 0.0);
-                    fall += moved;
+                    let qj = pin[t.id].xyz;
+                    let moved = t.h.x * max(dot(qj, u), 0.0) - hi.x * max(-dot(qi, u), 0.0);
+                    pumped += moved;
+                    let cj = t.h.x / vj;
+                    richer -= cj * u;
+                    richness += cj;
                     let sent = P.diffusion * gap.x + P.polar * moved;
                     flux += sent * u;
                 }
             }
         }
     }
-    let auxin = hi.x + P.diffusion * spread.x + P.polar * fall + P.production * vi - P.decay * hi.x;
+    let auxin = hi.x + P.diffusion * spread.x + P.polar * pumped + P.production * vi - P.decay * hi.x;
     let cytokinin = hi.y + P.ck_diffusion * spread.y + P.ck_production * hi.x - P.ck_decay * hi.y;
     hh_out[i] = vec2<f32>(auxin, cytokinin);
     let ca = hi.x / vi;
@@ -79,4 +87,14 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     let eps = P.elong * (ca / (P.e_half + ca)) * (P.e_block / (P.e_block + ca)) * room;
     shape_out[i] = with_dir(grow_along(grow_even(si, even / pi.w), a, eps), a);
     pos_out[i] = vec4<f32>(pi.xyz + disp, even * pow(1.0 + eps, 1.0 / 3.0));
+    // Pumps: toward richer neighbours, along the flow, down (mirrors rules::polarise).
+    let follow = ca / (P.pin_switch + ca);
+    let uphill = (1.0 - follow) / max(richness, 1e-12);
+    let along = follow / (P.flux_half + sqrt(dot(flux, flux)));
+    let goal = uphill * richer + along * flux + P.gravisense * vec3<f32>(P.gx, P.gy, P.gz);
+    let n = qi + P.pin_rate * (goal - qi);
+    let len = sqrt(dot(n, n));
+    var keep = 1.0;
+    if (len > 1.0) { keep = 1.0 / len; }
+    pin_out[i] = vec4<f32>(n * keep, 0.0);
 }

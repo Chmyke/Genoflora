@@ -144,9 +144,47 @@ alignement 0,84 à 0,86 sur trois graines contre 0,32 à 0,52 pour le témoin au
 cellules 2,7 fois plus longues que larges ; sans allongement, cellules presque rondes (1,7) et
 racine plus fine. Toujours rien ne monte.
 
-Non corrigé, signalé : le sens du transport de l'auxine vient directement de la gravité dans
-chaque cellule (point 5 de l'audit), ce qui est proche de coder le résultat « la racine descend ».
-Le corriger demande un vrai mécanisme (polarité des pompes PIN) : à décider.
+Point 5 de l'audit, corrigé ensuite (2026-11-25, validé par Mickaël : « le plus fidèle au
+réel »). Le sens du transport ne vient plus de la gravité : chaque cellule porte une polarité de
+ses pompes PIN (un vecteur de longueur au plus 1, nul dans la graine), et pompe son auxine vers
+les voisines qui font face à ce côté. Les pompes se déplacent lentement (la cellule s'en
+souvient) vers une cible faite de trois tirages, tous à l'œuvre dans chaque cellule (Bayer et
+al. 2009) :
+
+- vers les voisines les plus riches en auxine (Jönsson et al. 2006), qui l'emporte quand la
+  cellule en contient peu ;
+- dans le sens du flux qui la traverse déjà (canalisation, Mitchison 1980), qui l'emporte quand
+  elle en contient beaucoup ;
+- vers le bas, tiré par les grains lourds de la cellule (statolithes), avec une force du génome
+  (`gravisense`, 0,3 par défaut, choisi par Mickaël).
+
+Les équations exactes de Bayer 2009 sont dans un supplément non lu : la bascule entre les deux
+premiers tirages (selon l'auxine de la cellule) est la forme la plus simple de ce que dit
+l'article, à revérifier. Les pompes sont représentées par un seul vecteur par cellule (pas une
+quantité par paroi) : approximation au premier ordre de la répartition de Jönsson. L'ancienne
+règle est le cas particulier où les pompes seraient fixées vers le bas ; elle redonne les mêmes
+mesures.
+
+Mesuré (16 000 cellules sur GPU, génome qui allonge les cellules, trois graines) :
+
+| Force de la gravité sur les pompes | Alignement (témoin) | Allongement de la racine |
+|---|---|---|
+| Ancienne règle | 0,86 à 0,90 (0,28 à 0,53) | 3,6 à 4,0 |
+| 1 | 0,84 à 0,90 (0,28 à 0,53) | 3,3 à 3,5 |
+| 0,3 (défaut) | 0,74 à 0,80 (0,32 à 0,53) | 1,9 |
+| 0,1 ou 0 (juge, 1 024 cellules) | non mesuré | boule (1,1 à 1,3) |
+
+Constat important : sans gravité, les pompes se polarisent (0,45 à 0,89) mais rien ne
+s'organise, quel que soit le poids donné au flux. Toutes les cellules fabriquent l'auxine au même
+rythme et aucune ne la fait disparaître : sans source ni puits, la canalisation n'a rien à
+relier. L'ancienne règle fabriquait ce puits de force en bas. Dans une vraie graine, l'axe haut-bas
+existe déjà dans l'embryon (hérité de la mère) ; il ne naît pas de rien. Un test l'enregistre
+(`pumps_blind_to_gravity_make_no_column_yet`) et doit casser le jour où une source et un puits
+émergeront.
+
+Vérification : la comparaison GPU contre juge couvre les pompes (exacte sur 60 pas, germination
+exacte sur WARP). L'alignement ne se voit pas sur les quelques centaines de cellules du juge : il
+est mesuré sur la carte (`geno_gpu/tests/emergence.rs`, sauté sans carte graphique).
 
 Effets sur la vérification : divisions à chaque pas, donc un tissu chaotique plus tôt. La
 comparaison exacte GPU contre juge tient 60 pas sur un tissu, au-delà elle est statistique
@@ -156,6 +194,13 @@ la formule directe était fausse de 0,2 % pour les cellules plates, et décidait
 
 Limites : pas de sol ni de lumière ; le juge compare toutes les paires (petits tissus seulement) ;
 la grille GPU grossit avec l'étirement maximal, donc le calcul ralentit.
+
+Suite proposée par Claude (à trancher au début du prochain lot) : la piste A2 « sol et air »
+avant une source et un puits d'auxine. Raison : décider sans environnement où l'auxine se
+fabrique demanderait une règle interne arbitraire, proche de coder le résultat ; le sol et l'air
+donnent à chaque cellule une vraie information locale (dans la terre ou dehors, à la lumière ou
+non), d'où une source et un puits pourront découler (par exemple : une cellule exposée fabrique
+plus d'auxine).
 
 ## Ordre proposé des facteurs d'environnement (non validé)
 

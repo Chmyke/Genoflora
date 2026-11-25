@@ -28,9 +28,20 @@ pub struct Params {
     /// Share of the auxin gap with each neighbour closed per step (the gap is in concentration).
     /// Stable while it stays well below one over the number of neighbours.
     pub diffusion: f32,
-    /// Share of its hormone a cell hands, per step, to a neighbour lying straight below it
-    /// (polar transport: the heavy grains of the cell settle on its lower side and point the way).
+    /// Share of its auxin a fully polarised cell pumps, per step, to a neighbour lying straight
+    /// along its polarity (active transport by the PIN pumps).
     pub polar: f32,
+    /// Share of the way the pump polarity moves toward its target per step (how fast the pumps
+    /// are moved from one side of the cell to another).
+    pub pin_rate: f32,
+    /// Auxin concentration at which a cell weighs both ways of placing its pumps equally: below,
+    /// mostly toward the richer neighbours; above, mostly along the auxin flowing through it.
+    pub pin_switch: f32,
+    /// Auxin flow through a cell at which its pumps follow the flow half as much as they can.
+    pub flux_half: f32,
+    /// How far the heavy grains settled on the lower side of a cell pull its pumps down (0: the
+    /// cell does not sense gravity).
+    pub gravisense: f32,
     /// Hormone every cell makes per step, per unit of its volume.
     pub production: f32,
     /// Fraction of hormone lost per step.
@@ -78,6 +89,10 @@ impl Default for Params {
             reach: 1.2,
             diffusion: 0.02,
             polar: 0.02,
+            pin_rate: 0.01,
+            pin_switch: 1.0,
+            flux_half: 0.01,
+            gravisense: 0.3,
             production: 0.001,
             decay: 0.001,
             // Off in the default genome: measured on 2026-11-25, cytokinin that only diffuses

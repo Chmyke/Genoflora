@@ -7,6 +7,7 @@
 @group(0) @binding(5) var<storage, read> rank: array<u32>;
 @group(0) @binding(6) var<storage, read_write> indirect: array<u32>;
 @group(0) @binding(7) var<storage, read_write> shape: array<Shape>;
+@group(0) @binding(8) var<storage, read_write> pin: array<vec4<f32>>;
 
 fn mix(v: u32) -> u32 {
     var x = v;
@@ -67,6 +68,7 @@ fn apply(@builtin(global_invocation_id) g: vec3<u32>) {
     shape[j] = daughter;
     hh[i] = h;
     hh[j] = h;
+    pin[j] = pin[i];
 }
 
 @compute @workgroup_size(1)

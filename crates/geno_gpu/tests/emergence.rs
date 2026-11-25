@@ -1,0 +1,79 @@
+//! What emerges on a big tissue, measured on the graphics card. The judge is too slow for sixteen
+//! thousand cells, and some effects only show at that size. Skipped on a machine without a card
+//! (the software adapter would take hours).
+
+use geno_gpu::{Adapter, GpuSim};
+use geno_sim::checks::{lie, run};
+use geno_sim::{Cells, Engine, EngineError, Params};
+
+/// Grows a seed until the tissue is nearly full, or `None` without a graphics card.
+fn grow(p: &Params) -> Result<Option<Cells>, EngineError> {
+    const CAPACITY: usize = 16_384;
+    let mut sim = match GpuSim::new(p, &Cells::seed(p, CAPACITY, 1.0), Adapter::Hardware) {
+        Ok(sim) => sim,
+        Err(e) => {
+            eprintln!("hardware adapter skipped: {e}");
+            return Ok(None);
+        }
+    };
+    for _ in 0..40 {
+        run(&mut sim, 2000, Some(p.divide_every));
+        let cells = sim.snapshot()?;
+        if cells.count >= CAPACITY * 97 / 100 {
+            return Ok(Some(cells));
+        }
+    }
+    Err(EngineError("the tissue never filled up".into()))
+}
+
+/// A genome whose cells stretch where auxin is moderate and turn toward the auxin flow.
+fn stretching() -> Params {
+    Params {
+        half_sat: 10.0,
+        polar: 0.1,
+        elong: 0.002,
+        e_half: 0.2,
+        e_block: 1.0,
+        max_half_length: 2.25,
+        align: 10.0,
+        ..Params::default()
+    }
+}
+
+// Nothing says "line up vertically": each cell only turns its growth direction toward the auxin
+// that flows through it. The control genome is identical except that growth directions never
+// turn. Several seeds and a tilted gravity show the cells follow the flow, not an axis.
+#[test]
+fn stretched_cells_line_up_with_the_auxin_flow() -> Result<(), EngineError> {
+    let runs = [
+        (1, [0.0, -1.0, 0.0]),
+        (2, [0.0, -1.0, 0.0]),
+        (3, [0.0, -1.0, 0.0]),
+        (1, [0.6, 0.0, 0.8]),
+    ];
+    let (mut turning, mut control) = (0.0, 0.0);
+    for (seed, gravity) in runs {
+        let p = Params {
+            seed,
+            gravity,
+            ..stretching()
+        };
+        let (Some(a), Some(b)) = (grow(&p)?, grow(&Params { align: 0.0, ..p })?) else {
+            return Ok(());
+        };
+        let (l, c) = (lie(&a, p.gravity), lie(&b, p.gravity));
+        eprintln!(
+            "seed {seed} {gravity:?}: turning {:.2}, control {:.2}, {l:?}",
+            l.alignment, c.alignment
+        );
+        assert!(l.stretch >= 2.0 && l.alignment >= 0.65, "{l:?}");
+        turning += l.alignment / runs.len() as f64;
+        control += c.alignment / runs.len() as f64;
+    }
+    // Measured 2026-11-25 with the pumps: 0.74 to 0.80 against 0.32 to 0.53.
+    assert!(
+        turning >= control + 0.2,
+        "turning {turning:.2}, control {control:.2}"
+    );
+    Ok(())
+}

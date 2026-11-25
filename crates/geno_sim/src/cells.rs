@@ -16,6 +16,9 @@ pub struct Cell {
     pub shape: Shape,
     /// Hormone amounts (auxin, cytokinin).
     pub h: [f32; 2],
+    /// Polarity of the auxin pumps (PIN): xyz is the side of the cell where they sit, its length
+    /// (at most 1) how strongly they gather there; w is unused (GPU alignment).
+    pub pin: [f32; 4],
 }
 
 /// A cell's index is its stable identifier (cells never die yet). Vectors are `capacity` long;
@@ -26,6 +29,7 @@ pub struct Cells {
     pub pr: Vec<[f32; 4]>,
     pub shape: Vec<Shape>,
     pub h: Vec<[f32; 2]>,
+    pub pin: Vec<[f32; 4]>,
 }
 
 impl Cells {
@@ -36,12 +40,13 @@ impl Cells {
             pr: vec![[0.0; 4]; capacity],
             shape: vec![sphere(1.0, [1.0, 0.0, 0.0]); capacity],
             h: vec![[0.0; 2]; capacity],
+            pin: vec![[0.0; 4]; capacity],
         }
     }
 
     /// A single round cell of radius `p.r_div` at the origin: the starting point of a plant.
     /// Its growth direction is drawn from the run's seed, so it is aligned with nothing in
-    /// particular.
+    /// particular, and its auxin pumps are spread evenly (no polarity).
     pub fn seed(p: &crate::Params, capacity: usize, hormone: f32) -> Self {
         let mut cells = Self::empty(capacity.max(1));
         cells.count = 1;
@@ -52,6 +57,7 @@ impl Cells {
                 pr: [0.0, 0.0, 0.0, p.r_div],
                 shape: sphere(p.r_div, a),
                 h: [hormone, 0.0],
+                pin: [0.0; 4],
             },
         );
         cells
@@ -66,6 +72,7 @@ impl Cells {
             pr: self.pr[i],
             shape: self.shape[i],
             h: self.h[i],
+            pin: self.pin[i],
         }
     }
 
@@ -73,6 +80,7 @@ impl Cells {
         self.pr[i] = cell.pr;
         self.shape[i] = cell.shape;
         self.h[i] = cell.h;
+        self.pin[i] = cell.pin;
     }
 
     /// The living cells: positions with radius.
@@ -88,5 +96,10 @@ impl Cells {
     /// Hormone amounts of the living cells.
     pub fn hormone(&self) -> &[[f32; 2]] {
         &self.h[..self.count]
+    }
+
+    /// Pump polarities of the living cells.
+    pub fn polarity(&self) -> &[[f32; 4]] {
+        &self.pin[..self.count]
     }
 }
