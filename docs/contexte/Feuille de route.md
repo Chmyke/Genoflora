@@ -372,6 +372,18 @@ Mesuré sur la carte, cellules rondes, 20 000 cellules : tige de 42 de haut pour
 centre (2 200 cellules à l'air), racine de 92. L'allongement des cellules reste éteint par défaut.
 Les tests de la racine tournent sur le génome d'avant la maturation (`frugal`).
 
+Visionneuse (2026-11-25, demandée par Mickaël : « visualiser un maximum de choses »). Une page HTML
+autonome montre la plante cellule par cellule, colorée au choix par l'auxine, la cytokinine, la
+jeunesse, la lumière reçue (donc l'ombre), le sens et la force des pompes, la taille ; en entier
+ou en coupe, relevé par relevé, avec la lecture d'une cellule au survol. Deux commandes :
+
+    cargo run --release -p geno_gpu --example germinate -- sorties/releves 21000 14 max=20000
+    python tools/viewer.py sorties/releves "sorties/Plante de référence.html"
+
+Le dossier `sorties/` n'est pas versionné. C'est une sonde, pas le rendu 3D final (toujours
+ouvert) : dessin en 2D, ronds à la place des ellipsoïdes, quelques dizaines de milliers de cellules.
+La lumière reçue de chaque cellule est recalculée à l'export (`checks::light_on`, toutes les paires).
+
 Prochaine étape : mesurer la couronne (lobes), puis fixer la taille du foyer de la pointe de tige
 (les cellules jeunes retiennent leurs voisines, WUS/CLV3), puis un maximum d'auxine étroit à la
 pointe de racine (fontaine inversée).

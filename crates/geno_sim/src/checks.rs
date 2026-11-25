@@ -52,6 +52,21 @@ pub fn run(e: &mut dyn Engine, steps: u32, divide_every: Option<u32>) {
     }
 }
 
+/// Light each cell receives: what the soil lets through, dimmed by the cells lying above it.
+/// Every pair is tested, like the judge.
+pub fn light_on(c: &Cells, p: &Params) -> Vec<f32> {
+    (0..c.count)
+        .map(|i| {
+            let me = c.get(i);
+            let mut g = crate::rules::Gathered::default();
+            for j in (0..c.count).filter(|&j| j != i) {
+                crate::rules::interact(&me, &c.get(j), p, &mut g);
+            }
+            crate::soil::shaded(p, crate::soil::light(p, &me.pr), g.cover)
+        })
+        .collect()
+}
+
 /// Total hormone, both kinds together.
 pub fn mass(c: &Cells) -> f64 {
     c.hormone()
@@ -275,6 +290,19 @@ mod tests {
 
     fn judge(p: &Params, n: usize, capacity: usize) -> Reference {
         Reference::new(p, &lattice(n, capacity, p))
+    }
+
+    #[test]
+    fn light_on_a_tissue_is_full_on_top_and_dim_underneath() {
+        let p = Params::default();
+        let mut cells = Cells::empty(2);
+        cells.count = 2;
+        let h = p.surface + 5.0;
+        cells.pr[0] = [0.0, h + 1.9, 0.0, 1.0];
+        cells.pr[1] = [0.0, h, 0.0, 1.0];
+        let light = light_on(&cells, &p);
+        assert_eq!(light[0], 1.0);
+        assert!((light[1] - (-p.shade).exp()).abs() < 1e-6, "{light:?}");
     }
 
     #[test]

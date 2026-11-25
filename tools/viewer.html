@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genoflora, visionneuse</title>
+<style>
+  :root { --bg: #f6f4ee; --ink: #23261f; --soft: #6b6f63; --panel: #ffffff; --line: #d9d5c8; --air: #fbfaf5; --soil: #d8c7ad; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, "Segoe UI", sans-serif; }
+  main { display: grid; grid-template-columns: 270px 1fr; height: 100vh; }
+  aside { padding: 16px; background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .sub { color: var(--soft); margin: 0 0 14px; font-size: 12px; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--soft); margin: 16px 0 6px; }
+  .q { display: block; width: 100%; text-align: left; padding: 7px 9px; margin: 0 0 4px; border: 1px solid var(--line); border-radius: 6px; background: none; color: inherit; font: inherit; cursor: pointer; }
+  .q[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .q small { display: block; font-size: 11px; opacity: .7; }
+  label { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  input[type=range] { flex: 1; min-width: 0; }
+  #bar { height: 12px; border-radius: 3px; border: 1px solid var(--line); }
+  .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--soft); }
+  #info { font-size: 12px; white-space: pre-line; min-height: 150px; color: var(--ink); }
+  #stage { position: relative; min-width: 0; height: 100vh; overflow: hidden; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+  #when { position: absolute; left: 14px; top: 10px; font-size: 12px; color: var(--soft); }
+  button.play { padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: none; font: inherit; cursor: pointer; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; grid-template-rows: auto 70vh; height: auto; } #stage { height: 70vh; } aside { border-right: 0; border-bottom: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<main>
+  <aside>
+    <h1>Genoflora</h1>
+    <p class="sub">Chaque rond est une cellule. Glisser pour tourner, molette pour zoomer, survoler pour lire une cellule.</p>
+    <h2>Ce que montre la couleur</h2>
+    <div id="quantities"></div>
+    <div id="bar"></div>
+    <div class="ends"><span id="lo"></span><span id="hi"></span></div>
+    <h2>Vue</h2>
+    <label><input type="checkbox" id="slice" checked> Coupe par le milieu</label>
+    <label>Épaisseur <input type="range" id="thick" min="0.5" max="8" step="0.5" value="1.5"></label>
+    <h2>Temps</h2>
+    <label><button class="play" id="play">Lecture</button><input type="range" id="time" min="0" value="0"></label>
+    <h2>Cellule survolée</h2>
+    <div id="info">Aucune.</div>
+  </aside>
+  <div id="stage"><canvas id="view"></canvas><div id="when"></div></div>
+</main>
+<script>
+const DATA = /*DATA*/null;
+const N = 11; // numbers per cell: x y z r auxin cytokinin youth light pinx piny pinz
+const SEQ = [[68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37]];
+const DIV = [[33, 102, 172], [146, 197, 222], [247, 247, 247], [244, 165, 130], [178, 24, 43]];
+
+function ramp(stops, t) {
+  t = Math.min(1, Math.max(0, t)) * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(t)), f = t - i;
+  const c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+// Upper bound of a quantity: the 98th percentile over the last snapshot, so one extreme cell
+// does not flatten the scale.
+function high(field) {
+  const s = DATA.shots[DATA.shots.length - 1], v = [];
+  for (let i = field; i < s.length; i += N) v.push(s[i]);
+  v.sort((a, b) => a - b);
+  return v[Math.floor(v.length * 0.98)] || 1;
+}
+
+const QUANTITIES = [
+  { name: "Auxine", note: "concentration ; s'accumule à la pointe de la racine", get: (s, i) => s[i + 4], max: high(4), stops: SEQ, root: true },
+  { name: "Cytokinine", note: "concentration ; fabriquée à la lumière", get: (s, i) => s[i + 5], max: high(5), stops: SEQ, root: true },
+  { name: "Jeunesse", note: "au-dessus de 0,5 la cellule peut se diviser", get: (s, i) => s[i + 6], max: 1, stops: SEQ },
+  { name: "Lumière reçue", note: "sombre : dans la terre ou à l'ombre d'autres cellules", get: (s, i) => s[i + 7], max: 1, stops: SEQ },
+  { name: "Pompes, sens vertical", note: "bleu : pompent vers le bas ; rouge : vers le haut", get: (s, i) => s[i + 9], min: -1, max: 1, stops: DIV },
+  { name: "Pompes, force", note: "0 : réparties partout ; 1 : toutes du même côté", get: (s, i) => Math.hypot(s[i + 8], s[i + 9], s[i + 10]), max: 1, stops: SEQ },
+  { name: "Taille", note: "rayon de la cellule", get: (s, i) => s[i + 3], min: 0.6, max: 1.1, stops: SEQ },
+];
+
+const canvas = document.getElementById("view"), ctx = canvas.getContext("2d");
+const state = { quantity: 3, angle: 0.5, zoom: 1, shot: DATA.shots.length - 1, hover: null, drawn: [] };
+
+function scale01(q, value) {
+  const lo = q.min || 0;
+  let t = (value - lo) / (q.max - lo);
+  // Square root where a few cells hold most of it, so the faint ones stay visible.
+  return q.root ? Math.sqrt(Math.max(0, t)) : t;
+}
+
+function extent() {
+  const s = DATA.shots[DATA.shots.length - 1];
+  let lo = Infinity, hi = -Infinity, wide = 0;
+  for (let i = 0; i < s.length; i += N) {
+    lo = Math.min(lo, s[i + 1]); hi = Math.max(hi, s[i + 1]);
+    wide = Math.max(wide, Math.hypot(s[i], s[i + 2]));
+  }
+  return { lo: lo - 3, hi: hi + 3, wide: wide + 3 };
+}
+const EXTENT = extent();
+
+function draw() {
+  const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w * dpr || canvas.height !== h * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const s = DATA.shots[state.shot], q = QUANTITIES[state.quantity];
+  const k = Math.min(h / (EXTENT.hi - EXTENT.lo), w / (2 * EXTENT.wide)) * state.zoom;
+  const cx = w / 2, cy = h / 2, mid = (EXTENT.hi + EXTENT.lo) / 2;
+  const ground = cy - (DATA.surface - mid) * k;
+  const css = getComputedStyle(document.documentElement);
+  ctx.fillStyle = css.getPropertyValue("--air"); ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = css.getPropertyValue("--soil"); ctx.fillRect(0, ground, w, h - ground);
+  const ca = Math.cos(state.angle), sa = Math.sin(state.angle);
+  const slice = document.getElementById("slice").checked, thick = +document.getElementById("thick").value;
+  const cells = [];
+  for (let i = 0; i < s.length; i += N) {
+    const depth = -s[i] * sa + s[i + 2] * ca;
+    if (slice && Math.abs(depth) > thick) continue;
+    cells.push([depth, cx + (s[i] * ca + s[i + 2] * sa) * k, cy - (s[i + 1] - mid) * k, s[i + 3] * k, i]);
+  }
+  cells.sort((a, b) => a[0] - b[0]);
+  ctx.lineWidth = Math.max(0.5, k * 0.06);
+  ctx.strokeStyle = "rgba(0,0,0,.28)";
+  for (const c of cells) {
+    ctx.beginPath(); ctx.arc(c[1], c[2], Math.max(c[3], 0.6), 0, 6.2832);
+    ctx.fillStyle = ramp(q.stops, scale01(q, q.get(s, c[4]))); ctx.fill();
+    if (c[3] > 2.5) ctx.stroke();
+  }
+  if (state.hover !== null) {
+    const c = cells.find(c => c[4] === state.hover);
+    if (c) { ctx.beginPath(); ctx.arc(c[1], c[2], c[3] + 2, 0, 6.2832); ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.stroke(); }
+  }
+  state.drawn = cells;
+  document.getElementById("when").textContent =
+    `Relevé ${state.shot + 1} sur ${DATA.shots.length}, ${s.length / N} cellules (${cells.length} affichées)`;
+}
+
+function legend() {
+  const q = QUANTITIES[state.quantity], parts = [];
+  for (let t = 0; t <= 1.0001; t += 0.05) parts.push(ramp(q.stops, q.root ? Math.sqrt(t) : t));
+  document.getElementById("bar").style.background = `linear-gradient(to right, ${parts.join(",")})`;
+  const fmt = v => v.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
+  document.getElementById("lo").textContent = fmt(q.min || 0);
+  document.getElementById("hi").textContent = fmt(q.max) + (q.root ? " et plus" : "");
+}
+
+function describe(i) {
+  const s = DATA.shots[state.shot], f = v => v.toLocaleString("fr-FR", { maximumFractionDigits: 3 });
+  const depth = DATA.surface - s[i + 1];
+  return [
+    depth > 0 ? `Dans la terre, à ${f(depth)} sous la surface` : `À l'air, à ${f(-depth)} au-dessus du sol`,
+    `Rayon : ${f(s[i + 3])}`,
+    `Auxine : ${f(s[i + 4])}`,
+    `Cytokinine : ${f(s[i + 5])}`,
+    `Jeunesse : ${f(s[i + 6])} (${s[i + 6] > 0.5 ? "peut se diviser" : "mûre"})`,
+    `Lumière reçue : ${f(s[i + 7])}`,
+    `Pompes : force ${f(Math.hypot(s[i + 8], s[i + 9], s[i + 10]))}, ${s[i + 9] < 0 ? "vers le bas" : "vers le haut"}`,
+  ].join("\n");
+}
+
+const list = document.getElementById("quantities");
+QUANTITIES.forEach((q, n) => {
+  const b = document.createElement("button");
+  b.className = "q"; b.innerHTML = `${q.name}<small>${q.note}</small>`;
+  b.onclick = () => { state.quantity = n; refresh(); };
+  list.appendChild(b);
+});
+
+function refresh() {
+  [...list.children].forEach((b, n) => b.setAttribute("aria-pressed", n === state.quantity));
+  legend(); draw();
+}
+
+const time = document.getElementById("time");
+time.max = DATA.shots.length - 1; time.value = state.shot;
+time.oninput = () => { state.shot = +time.value; state.hover = null; draw(); };
+document.getElementById("slice").onchange = draw;
+document.getElementById("thick").oninput = draw;
+
+let timer = null;
+document.getElementById("play").onclick = e => {
+  if (timer) { clearInterval(timer); timer = null; e.target.textContent = "Lecture"; return; }
+  e.target.textContent = "Pause";
+  timer = setInterval(() => { state.shot = (state.shot + 1) % DATA.shots.length; time.value = state.shot; draw(); }, 450);
+};
+
+let drag = null;
+canvas.onpointerdown = e => { drag = { x: e.clientX, angle: state.angle }; canvas.setPointerCapture(e.pointerId); };
+canvas.onpointerup = () => { drag = null; };
+canvas.onpointermove = e => {
+  if (drag) { state.angle = drag.angle + (e.clientX - drag.x) * 0.01; draw(); return; }
+  const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  let found = null;
+  for (let n = state.drawn.length - 1; n >= 0; n--) {
+    const c = state.drawn[n];
+    if ((c[1] - x) ** 2 + (c[2] - y) ** 2 <= Math.max(c[3], 3) ** 2) { found = c[4]; break; }
+  }
+  if (found !== state.hover) {
+    state.hover = found;
+    document.getElementById("info").textContent = found === null ? "Aucune." : describe(found);
+    draw();
+  }
+};
+canvas.onwheel = e => { e.preventDefault(); state.zoom = Math.min(12, Math.max(0.5, state.zoom * (e.deltaY < 0 ? 1.15 : 0.87))); draw(); };
+window.onresize = draw;
+refresh();
+</script>
+</body>
+</html>

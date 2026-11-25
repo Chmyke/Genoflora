@@ -13,3 +13,6 @@ scheduled_tasks.lock
 *.log
 Thumbs.db
 Desktop.ini
+
+# Sorties générées (visionneuse, relevés)
+sorties/

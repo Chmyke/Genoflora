@@ -1,11 +1,12 @@
-//! Probe: grows one seed cell on the GPU and writes snapshots as CSV (x,y,z,r,auxin,cytokinin,n00,n11,n22,n01,n02,n12,growth direction xyz per line,
-//! one file per snapshot) so that what emerges can be measured and drawn.
+//! Probe: grows one seed cell on the GPU and writes snapshots as CSV, one file per snapshot, so
+//! that what emerges can be measured and drawn. Columns: x, y, z, r, auxin, cytokinin, n00, n11,
+//! n22, n01, n02, n12, growth direction xyz, pump polarity xyz, youth, light received.
 //! Usage: cargo run --release -p geno_gpu --example germinate -- <out dir> <steps> <snapshots>
 //!        [polar=0.05] [half_sat=4] [production=..] [decay=..] [diffusion=..] [max=50000]
 //! The run stops once `max` cells are alive.
 
 use geno_gpu::{Adapter, GpuSim};
-use geno_sim::checks::run;
+use geno_sim::checks::{light_on, run};
 use geno_sim::{Cells, Engine, EngineError, Params};
 use std::fmt::Write as _;
 
@@ -59,9 +60,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         run(&mut sim, steps / shots, Some(p.divide_every));
         let cells = sim.snapshot()?;
         let mut text = String::new();
+        let light = light_on(&cells, &p);
         for (i, (q, h)) in cells.alive().iter().zip(cells.hormone()).enumerate() {
             let s = cells.shape[i];
-            let cols: Vec<String> = q.iter().chain(h).chain(&s[..9]).map(|v| v.to_string()).collect();
+            let more = [cells.youth[i], light[i]];
+            let cols: Vec<String> = q
+                .iter()
+                .chain(h)
+                .chain(&s[..9])
+                .chain(&cells.pin[i][..3])
+                .chain(&more)
+                .map(|v| v.to_string())
+                .collect();
             writeln!(text, "{}", cols.join(",")).map_err(|e| EngineError(e.to_string()))?;
         }
         std::fs::write(format!("{dir}/{shot:04}.csv"), text)?;
