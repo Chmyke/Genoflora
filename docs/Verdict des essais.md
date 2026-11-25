@@ -2,7 +2,7 @@
 
 *2026-11-25. Machine : Ryzen 9 7950X3D (32 fils), RTX 4080 SUPER, Windows 11, wgpu 30 (Vulkan),
 build `--release`. Tout ce qui suit est mesuré, sauf mention « estimation ». Fichiers bruts :
-`Spikes/Résultats/*.json`. Plan suivi : `docs/Plan des essais.md`.*
+`Spikes/Résultats/*.json` (le code des essais, supprimé le 2026-11-25, reste dans l'historique git au commit `331c7be`). Plan suivi : `docs/Plan des essais.md`.*
 
 ## Résultat en une phrase
 

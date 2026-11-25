@@ -1,4 +1,4 @@
-// Shared by grid, step and divide shaders. Layout mirrors `params_bytes` in lib.rs.
+// Shared by grid, step and divide shaders. Layout mirrors `params_bytes` in src/lib.rs.
 struct Params {
     inv_cell: f32, half: f32, g1: u32, capacity: u32,
     mob_rep: f32, mob_adh: f32, reach: f32, diffusion: f32,

@@ -50,11 +50,14 @@
 - Reproductibilité (2026-11-24) : graine numérique + fichier génome = exactement la même plante sur
   la même machine ; à de petits écarts près entre machines (le GPU ne garantit pas les mêmes bits).
   Mesures exportables.
+- Architecture de calcul (2026-11-25, après les trois essais) : la plante tourne à 100 % sur le
+  GPU (`geno_gpu`). `geno_sim` est un juge CPU réservé à la vérification : chaque règle y naît,
+  les tests comparent le moteur GPU au juge. Le juge est optionnel et n'entre pas dans le produit
+  final. Détail : `docs/contexte/Parallélisme.md`.
 
 ## Ouvert
 
 - Rendu 3D : Bevy, wgpu nu ou autre. À trancher avec un tableau comparatif avant d'en avoir besoin.
-- Parallélisme : essais faits, verdict à valider (`Spikes/Verdict.md`).
 - Équations du premier modèle d'auxine : partir de Jönsson 2006 ou Smith 2006.
 - Forme des cellules : comment elles s'étirent. Pistes : ellipsoïdes qui s'allongent selon un
   axe ; ou rendu par cellules de Voronoï autour des centres (polyèdres jointifs, comme un vrai
@@ -63,9 +66,11 @@
 
 ## Prochaine étape
 
-1. Valider le verdict des essais (`Spikes/Verdict.md`, recommandation : CPU + GPU), puis supprimer
-   `Spikes/` et la branche `essai-deuxieme-hormone`.
-2. Puis jalon 2 de la note : phyllotaxie sur une surface, angle moyen 137,5° ± 5°, sans spirale codée.
+Le socle est en place (2026-11-25) : juge CPU et moteur GPU font pousser le même tissu de test
+(sphères, une hormone, division), comparés dans `check.ps1`.
+
+Jalon 2 de la note : phyllotaxie sur une surface, angle moyen 137,5° ± 5°, sans spirale codée.
+À trancher avant : les équations du premier modèle d'auxine (voir Ouvert).
 
 ## Ordre proposé des facteurs d'environnement (non validé)
 

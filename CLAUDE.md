@@ -17,13 +17,18 @@ avertissement, tests). Tout contrôle neuf s'y rattache. `cargo` se lance depuis
 
 | Crate | Rôle | Dépendances externes |
 |---|---|---|
-| `geno_sim` | Cellules, génome, mitose ; toute règle de simulation | aucune |
+| `geno_sim` | Juge CPU : cellules, règles écrites en clair, référence mono-thread, contrôles chiffrés | aucune |
+| `geno_gpu` | Moteur GPU (wgpu + WGSL) : c'est lui qui fait tourner la plante | `wgpu`, `pollster`, `bytemuck` |
 
-Le rendu 3D viendra dans un crate séparé ; la simulation n'en dépendra jamais.
+Le juge sert à vérifier, jamais à produire : il n'entre pas dans le produit final. Le rendu 3D
+viendra dans un crate séparé ; la simulation n'en dépendra jamais.
 
 ## Règles du code
 
-- Une règle biologique naît dans `geno_sim`, avec son test chiffré (jamais un critère « à l'œil »).
+- Une règle biologique naît dans `geno_sim`, avec son test chiffré (jamais un critère « à l'œil »),
+  puis est recopiée dans les shaders de `geno_gpu` ; `tests/against_judge.rs` compare les deux.
+- Comparaison cellule par cellule sur horizon court seulement (un tissu qui se divise est
+  chaotique) ; au-delà, comparer forme, effectif et masse. Les forces restent continues.
 - Simulation déterministe : mêmes entrées, mêmes bits. Pas de `HashMap`/`HashSet` (clippy les
   refuse), pas d'horloge, tout aléa vient d'une graine.
 - `unsafe` interdit, pas d'`unwrap` en logique (lints du workspace).

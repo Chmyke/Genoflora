@@ -1,7 +1,9 @@
-//! The oracle: single thread, every pair tested (O(N^2)), sums in index order. Slow and obvious.
+//! The judge: single thread, every pair tested (O(N^2)), sums in index order. Slow and obvious.
 
-use crate::harness::Engine;
-use crate::model::{Cells, Params, divide, finish, interact};
+use crate::cells::Cells;
+use crate::engine::{Engine, EngineError};
+use crate::params::Params;
+use crate::rules::{divide, finish, interact};
 
 pub struct Reference {
     p: Params,
@@ -12,7 +14,12 @@ pub struct Reference {
 
 impl Reference {
     pub fn new(p: &Params, cells: &Cells) -> Self {
-        Self { p: *p, cur: cells.clone(), next: cells.clone(), epoch: 0 }
+        Self {
+            p: *p,
+            cur: cells.clone(),
+            next: cells.clone(),
+            epoch: 0,
+        }
     }
 }
 
@@ -24,7 +31,15 @@ impl Engine for Reference {
             let (mut disp, mut hs) = ([0.0f32; 3], 0.0f32);
             for j in 0..n {
                 if j != i {
-                    interact(&pi, hi, &self.cur.pr[j], self.cur.h[j], &self.p, &mut disp, &mut hs);
+                    interact(
+                        &pi,
+                        hi,
+                        &self.cur.pr[j],
+                        self.cur.h[j],
+                        &self.p,
+                        &mut disp,
+                        &mut hs,
+                    );
                 }
             }
             let (pr, h) = finish(&pi, hi, &disp, hs, &self.p);
@@ -40,9 +55,7 @@ impl Engine for Reference {
         self.epoch += 1;
     }
 
-    fn flush(&mut self) {}
-
-    fn snapshot(&mut self) -> Cells {
-        self.cur.clone()
+    fn snapshot(&mut self) -> Result<Cells, EngineError> {
+        Ok(self.cur.clone())
     }
 }

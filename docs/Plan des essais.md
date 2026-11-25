@@ -1,6 +1,6 @@
 # Plan des essais : CPU, GPU, CPU + GPU
 
-*Rédigé le 2026-11-24, exécuté le 2026-11-25 (résultats et écarts au plan : `Spikes/Verdict.md`). But unique : choisir l'architecture de calcul de Genoflora
+*Rédigé le 2026-11-24, exécuté le 2026-11-25 (résultats et écarts au plan : `docs/Verdict des essais.md` ; le code des essais, supprimé le 2026-11-25, reste dans l'historique git au commit `331c7be`). But unique : choisir l'architecture de calcul de Genoflora
 sur des mesures, pas sur une intuition. Tout le code des essais est jetable.*
 
 Contexte et risques : `docs/contexte/Parallélisme.md`.
@@ -94,7 +94,7 @@ Règles de départage :
 - Entre GPU et CPU + GPU, le GPU seul ne gagne que s'il va au moins 2 fois plus vite sur la
   croissance ; sinon CPU + GPU, plus simple à faire évoluer.
 
-Le verdict s'écrit dans `Spikes/Verdict.md` (tableau rempli, choix, raison), puis se reporte
+Le verdict s'écrit dans `docs/Verdict des essais.md` ; le code des essais, supprimé le 2026-11-25, reste dans l'historique git au commit `331c7be` (tableau rempli, choix, raison), puis se reporte
 dans `docs/contexte/Parallélisme.md` et la feuille de route. Le dossier `Spikes/` est ensuite
 supprimé du dépôt (l'historique git le garde).
 

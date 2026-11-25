@@ -74,11 +74,16 @@ Mesures, fixées avant de coder : temps par pas à 1 000, 10 000, 100 000 et 1 0
 même résultat que la version CPU à tolérance près ; effort (lignes, heures) et douleur de débogage.
 Le choix se fait sur ce tableau, puis les essais sont jetés.
 
-## Résultat des essais (2026-11-25, en attente de validation)
+## Résultat des essais et décision (2026-11-25, validée)
 
-Détail : `Spikes/Verdict.md`. Les trois essais passent toute la validation. Population tenue à
-30 pas par seconde : CPU 1,25 million de cellules, GPU 11 millions. Division à 1 million de
-cellules : 0,76 ms sur GPU, 11,4 ms en relisant sur le CPU. Recommandation : CPU + GPU, c'est-à-dire
-`geno_sim` en référence CPU où naît chaque règle, et un moteur wgpu pour faire tourner la plante,
-division comprise. Leçons : un tissu qui se divise est chaotique (comparaison exacte sur horizon
-court seulement) ; les forces doivent être continues.
+Détail : `docs/Verdict des essais.md` (le code des essais, supprimé le 2026-11-25, reste dans l'historique git au commit `331c7be`). Les trois essais passent toute
+la validation. Population tenue à 30 pas par seconde : CPU 1,25 million de cellules, GPU 11 millions.
+Division à 1 million de cellules : 0,76 ms sur GPU, 11,4 ms en relisant sur le CPU.
+
+**Décision : la plante tourne à 100 % sur le GPU** (`geno_gpu`, wgpu + WGSL, division comprise).
+`geno_sim` est le juge CPU : une version simple, mono-thread, qui ne sert qu'à la vérification.
+Chaque règle y est écrite d'abord, puis recopiée dans les shaders, et les tests comparent les deux.
+Le juge n'entre pas dans le produit final ; il est supprimable sans toucher au moteur.
+
+Leçons : un tissu qui se divise est chaotique (comparaison cellule par cellule sur horizon court
+seulement, forme et masse au-delà) ; les forces doivent être continues.

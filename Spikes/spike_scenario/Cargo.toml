@@ -1,9 +1,0 @@
-[package]
-name = "spike_scenario"
-description = "Shared scenario, single-thread reference (oracle), checks V1-V4 and result format."
-edition.workspace = true
-version.workspace = true
-publish.workspace = true
-
-[lints]
-workspace = true

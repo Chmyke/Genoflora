@@ -17,7 +17,7 @@ voir les cellules vivre (ressources qui circulent, pores qui s'ouvrent, cellules
 
 - `docs/Note de faisabilité.md` : l'idée, l'existant, le modèle, les jalons.
 - `docs/contexte/Feuille de route.md` : ce qui est décidé, ouvert, et la suite.
-- `docs/Plan des essais.md` : les essais CPU, GPU et CPU + GPU qui choisiront l'architecture.
+- `docs/Verdict des essais.md` : les essais CPU, GPU et CPU + GPU qui ont choisi l'architecture (moteur GPU, juge CPU pour la vérification).
 
 ## Vérifier
 

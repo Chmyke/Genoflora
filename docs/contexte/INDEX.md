@@ -6,3 +6,5 @@
 | État et prochaine étape | `docs/contexte/Feuille de route.md` |
 | Threads, GPU, déterminisme, forme des données | `docs/contexte/Parallélisme.md` |
 | Les trois essais : scénario, protocoles, grille de choix | `docs/Plan des essais.md` |
+| Les trois essais : mesures et recommandation | `docs/Verdict des essais.md` |
+| GPU seul ou GPU + juge CPU, en graphique | `docs/Comparatif des architectures.svg` |
