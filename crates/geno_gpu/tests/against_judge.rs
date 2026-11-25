@@ -39,9 +39,9 @@ fn matches_the_judge_cell_by_cell_on_a_short_run() -> Result<(), EngineError> {
 fn stops_dividing_at_capacity_like_the_judge() -> Result<(), EngineError> {
     on_each_adapter(|adapter| {
         let p = Params::default();
-        let start = lattice(500, 750, &p);
+        let start = lattice(500, 600, &p);
         let gap = gap_to_judge(&mut GpuSim::new(&p, &start, adapter)?, &p, &start, 300)?;
-        assert_eq!(gap.counts, (750, 750), "{adapter:?} {gap:?}");
+        assert_eq!(gap.counts, (600, 600), "{adapter:?} {gap:?}");
         assert!(gap.position <= 1e-3 && gap.mass <= 1e-4, "{adapter:?} {gap:?}");
         Ok(())
     })
@@ -110,6 +110,22 @@ fn same_inputs_same_bits_on_the_same_machine() -> Result<(), EngineError> {
             e.snapshot()
         };
         assert_eq!(grow()?, grow()?, "{adapter:?}");
+        Ok(())
+    })
+}
+
+#[test]
+fn a_seed_germinates_like_on_the_judge() -> Result<(), EngineError> {
+    on_each_adapter(|adapter| {
+        let p = Params {
+            half_sat: 10.0,
+            polar: 0.1,
+            ..Params::default()
+        };
+        let start = geno_sim::Cells::seed(256, p.r_div, 1.0);
+        let gap = gap_to_judge(&mut GpuSim::new(&p, &start, adapter)?, &p, &start, 4000)?;
+        assert_eq!(gap.counts.0, gap.counts.1, "{adapter:?} {gap:?}");
+        assert!(gap.shape <= 1e-2 && gap.mass <= 1e-3, "{adapter:?} {gap:?}");
         Ok(())
     })
 }

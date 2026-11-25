@@ -93,7 +93,11 @@ fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
         f(INV_CBRT2),
         u(p.seed),
         u(grid.cells() as u32),
-        u(0),
+        f(p.polar),
+        f(p.gravity[0]),
+        f(p.gravity[1]),
+        f(p.gravity[2]),
+        f(p.half_sat),
     ]
     .concat()
 }
@@ -141,7 +145,7 @@ impl GpuSim {
         let hh = [buffer("h0", capacity * 4, data), buffer("h1", capacity * 4, data)];
         let state = buffer("state", 16, data);
         let indirect = buffer("indirect", 16, U::STORAGE | U::INDIRECT | U::COPY_DST);
-        let params = buffer("params", 64, U::UNIFORM | U::COPY_DST);
+        let params = buffer("params", 80, U::UNIFORM | U::COPY_DST);
         let stage = U::MAP_READ | U::COPY_DST;
         let stage_pos = buffer("stage pos", capacity * 16, stage);
         let stage_hh = buffer("stage h", capacity * 4, stage);

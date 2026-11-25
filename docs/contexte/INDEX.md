@@ -8,3 +8,4 @@
 | Les trois essais : scénario, protocoles, grille de choix | `docs/Plan des essais.md` |
 | Les trois essais : mesures et recommandation | `docs/Verdict des essais.md` |
 | GPU seul ou GPU + juge CPU, en graphique | `docs/Comparatif des architectures.svg` |
+| Images de ce qui a émergé | `docs/images/` |

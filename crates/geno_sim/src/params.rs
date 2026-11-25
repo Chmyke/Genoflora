@@ -10,8 +10,10 @@ pub struct Params {
     pub seed: u32,
     /// Radius at which a cell divides.
     pub r_div: f32,
-    /// Radius gained per step.
+    /// Radius gained per step by a cell saturated with hormone.
     pub growth: f32,
+    /// Hormone concentration at which a cell grows at half that speed.
+    pub half_sat: f32,
     /// Mobility under compression (overlapping cells push each other apart).
     pub mob_rep: f32,
     /// Mobility under tension (close cells pull each other, tent profile, zero at the reach).
@@ -20,12 +22,17 @@ pub struct Params {
     pub reach: f32,
     /// Hormone exchanged per step with each neighbour, per unit of difference.
     pub diffusion: f32,
-    /// Hormone produced per step where x > 0 (placeholder source until genes decide).
+    /// Share of its hormone a cell hands, per step, to a neighbour lying straight below it
+    /// (polar transport: the heavy grains of the cell settle on its lower side and point the way).
+    pub polar: f32,
+    /// Hormone every cell makes per step, per unit of its volume.
     pub production: f32,
     /// Fraction of hormone lost per step.
     pub decay: f32,
     /// Divisions are evaluated every `divide_every` steps.
     pub divide_every: u32,
+    /// Direction in which heavy things fall (unit vector). Part of the environment, not of the cell.
+    pub gravity: [f32; 3],
 }
 
 impl Default for Params {
@@ -34,13 +41,16 @@ impl Default for Params {
             seed: 20_261_124,
             r_div: 1.0,
             growth: 0.001,
+            half_sat: 1.0,
             mob_rep: 0.1,
             mob_adh: 0.02,
             reach: 1.2,
             diffusion: 0.02,
+            polar: 0.02,
             production: 0.001,
             decay: 0.001,
             divide_every: 20,
+            gravity: [0.0, -1.0, 0.0],
         }
     }
 }

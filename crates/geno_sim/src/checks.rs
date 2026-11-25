@@ -161,6 +161,50 @@ pub fn division(engine: &mut dyn Engine, steps: u32) -> Result<Division, EngineE
     })
 }
 
+/// How a tissue lies along a direction (a unit vector, usually gravity).
+#[derive(Clone, Copy, Debug)]
+pub struct Lie {
+    /// Spread of the cells along the direction divided by their spread across it:
+    /// 1 for a ball, more for a column.
+    pub elongation: f64,
+    /// Mean hormone concentration of the tenth of the cells furthest along the direction...
+    pub front: f64,
+    /// ...and of the tenth furthest against it.
+    pub back: f64,
+    /// Furthest reach of the tissue along the direction and against it, from the origin
+    /// (where a seed starts).
+    pub reach: (f64, f64),
+}
+
+/// Measures the shape and the hormone of the tissue along `axis`. Needs at least ten cells.
+pub fn lie(c: &Cells, axis: [f32; 3]) -> Lie {
+    let n = c.count.max(1) as f64;
+    let axis = axis.map(f64::from);
+    let centre = [0, 1, 2].map(|k| c.alive().iter().map(|q| f64::from(q[k])).sum::<f64>() / n);
+    let (mut along2, mut all2) = (0.0f64, 0.0f64);
+    let mut heights: Vec<(f64, f64)> = Vec::with_capacity(c.count);
+    for (q, &h) in c.alive().iter().zip(c.hormone()) {
+        let d = [0, 1, 2].map(|k| f64::from(q[k]) - centre[k]);
+        let a = d[0] * axis[0] + d[1] * axis[1] + d[2] * axis[2];
+        along2 += a * a;
+        all2 += d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+        let from_origin = (0..3).map(|k| f64::from(q[k]) * axis[k]).sum::<f64>();
+        heights.push((from_origin, f64::from(h) / f64::from(q[3]).powi(3)));
+    }
+    heights.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let tenth = (c.count / 10).max(1).min(heights.len());
+    let mean = |part: &[(f64, f64)]| part.iter().map(|v| v.1).sum::<f64>() / part.len().max(1) as f64;
+    Lie {
+        elongation: (along2 / ((all2 - along2) / 2.0).max(1e-12)).sqrt(),
+        front: mean(&heights[heights.len() - tenth..]),
+        back: mean(&heights[..tenth]),
+        reach: (
+            heights.last().map_or(0.0, |v| v.0),
+            -heights.first().map_or(0.0, |v| v.0),
+        ),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -212,13 +256,58 @@ mod tests {
         Ok(())
     }
 
+    /// A genome that needs a lot of hormone to grow and moves it fast.
+    fn frugal() -> Params {
+        Params {
+            half_sat: 10.0,
+            polar: 0.1,
+            ..Params::default()
+        }
+    }
+
+    fn germinate(p: &Params) -> Result<Cells, EngineError> {
+        let mut e = Reference::new(p, &Cells::seed(1024, p.r_div, 1.0));
+        run(&mut e, 24_000, Some(p.divide_every));
+        e.snapshot()
+    }
+
+    // Nothing below says "grow down" or "make a tip": the cells only hand hormone to the
+    // neighbour below and grow when they hold enough of it. The tests measure what comes out.
     #[test]
-    fn a_seed_becomes_a_tissue() -> Result<(), EngineError> {
-        let p = Params::default();
-        let mut e = Reference::new(&p, &Cells::seed(64, p.r_div, 1.0));
-        run(&mut e, 800, Some(p.divide_every));
-        let cells = e.snapshot()?;
-        assert!(cells.count >= 8, "only {} cells", cells.count);
+    fn a_seed_grows_a_column_that_goes_down_with_the_hormone_at_its_tip() -> Result<(), EngineError> {
+        let p = frugal();
+        let cells = germinate(&p)?;
+        let l = lie(&cells, p.gravity);
+        assert!(cells.count >= 100, "only {} cells", cells.count);
+        assert!(l.elongation >= 2.0, "{l:?}");
+        assert!(l.front >= 5.0 * l.back, "{l:?}");
+        assert!(l.reach.0 >= 5.0 * l.reach.1, "{l:?}");
+        Ok(())
+    }
+
+    #[test]
+    fn the_column_follows_gravity_wherever_it_points() -> Result<(), EngineError> {
+        let p = Params {
+            gravity: [0.6, 0.0, 0.8],
+            ..frugal()
+        };
+        let cells = germinate(&p)?;
+        let l = lie(&cells, p.gravity);
+        assert!(l.elongation >= 2.0 && l.reach.0 >= 5.0 * l.reach.1, "{l:?}");
+        Ok(())
+    }
+
+    #[test]
+    fn without_gravity_sensing_the_seed_stays_a_ball() -> Result<(), EngineError> {
+        let p = Params {
+            polar: 0.0,
+            half_sat: 1.0,
+            ..Params::default()
+        };
+        let mut e = Reference::new(&p, &Cells::seed(1024, p.r_div, 1.0));
+        run(&mut e, 4000, Some(p.divide_every));
+        let l = lie(&e.snapshot()?, p.gravity);
+        assert!((0.7..=1.4).contains(&l.elongation), "{l:?}");
         Ok(())
     }
 }

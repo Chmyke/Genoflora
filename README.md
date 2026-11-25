@@ -11,7 +11,10 @@ feuilles, la circumnutation, les tropismes doivent émerger des règles locales 
 On regarde, on n'agit pas : pas d'interaction, et un rendu cellulaire où l'on peut zoomer jusqu'à
 voir les cellules vivre (ressources qui circulent, pores qui s'ouvrent, cellules qui meurent).
 
-État : tout début. Rien ne pousse encore.
+État : début. Une graine d'une cellule fait pousser une racine vers le bas, sans que « racine »
+ni « bas » soient écrits dans les règles. Rien ne monte encore, et rien ne s'affiche (pas de rendu).
+
+![Germination selon le génome](docs/images/Germination%20selon%20le%20g%C3%A9nome.png)
 
 ## Lire
 

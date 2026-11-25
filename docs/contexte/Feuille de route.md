@@ -73,12 +73,25 @@
 
 ## Prochaine étape
 
-Le socle est en place (2026-11-25) : juge CPU et moteur GPU font pousser le même tissu de test
-(sphères, une hormone, division), comparés dans `check.ps1`.
+Germination, premier résultat (2026-11-25). Quatre capacités de cellule, validées par Mickaël, et
+rien d'autre : sentir le bas, fabriquer l'auxine et la passer plutôt à la voisine du dessous,
+grandir selon l'auxine contenue, se diviser dans une direction aléatoire.
 
-Jalon suivant : la germination. Critères mesurés, sans chiffre du réel imposé : la tige monte,
-la racine descend, la croissance se concentre sous la pointe. Règles locales à valider avant de
-coder.
+Ce qui a émergé, mesuré (`geno_sim::checks`, images dans `docs/images/`) :
+
+- Une colonne qui descend depuis la graine, avec l'auxine concentrée à sa pointe : une racine.
+  Allongement de 2,7 à 7,3 selon le génome, 100 % des cellules sous la graine.
+- La forme dépend du génome : très sensible à l'auxine, la graine reste une boule ; moins
+  sensible, elle devient une colonne fine, parfois avec des départs latéraux.
+- La colonne suit la gravité quelle que soit sa direction ; sans perception du bas, la graine
+  reste une boule.
+
+Ce qui n'a pas émergé : rien ne monte. Pas de tige. Les quatre capacités ne suffisent pas à
+faire deux pôles. Piste à valider avant de coder (souvenir, à revérifier) : dans une vraie
+plante, la pointe de la tige vit là où l'auxine est basse et où une seconde hormone, la
+cytokinine, venue de la racine, est haute.
+
+Limites : cellules encore sphériques (elles ne s'allongent pas), pas de sol, pas de lumière.
 
 ## Ordre proposé des facteurs d'environnement (non validé)
 

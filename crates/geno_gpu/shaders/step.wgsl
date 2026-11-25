@@ -1,4 +1,4 @@
-// One step for every cell: gather neighbours (no float atomics), mechanics, diffusion, growth.
+// One step for every cell: gather neighbours (no float atomics), mechanics, hormone diffusion and fall, growth.
 // Reads the current buffers, writes the next ones.
 @group(0) @binding(1) var<storage, read> S: State;
 @group(0) @binding(2) var<storage, read> pos: array<vec4<f32>>;
@@ -18,7 +18,9 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     let c = vec3<i32>(cell_coord(pi.xyz));
     let top = i32(P.g1) - 1;
     var disp = vec3<f32>(0.0);
-    var hs = 0.0;
+    var spread = 0.0;
+    var fall = 0.0;
+    let down = vec3<f32>(P.gx, P.gy, P.gz);
     for (var z = max(c.z - 1, 0); z <= min(c.z + 1, top); z++) {
         for (var y = max(c.y - 1, 0); y <= min(c.y + 1, top); y++) {
             for (var x = max(c.x - 1, 0); x <= min(c.x + 1, top); x++) {
@@ -38,14 +40,16 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
                         var f = P.mob_rep * s;
                         if (s <= 0.0) { f = -P.mob_adh * min(-s, reach - d); }
                         disp += (f / d) * dv;
-                        hs += t.h - hi;
+                        spread += t.h - hi;
+                        let above = dot(dv, down) / -d;
+                        fall += t.h * max(-above, 0.0) - hi * max(above, 0.0);
                     }
                 }
             }
         }
     }
-    var source = 0.0;
-    if (pi.x > 0.0) { source = P.production; }
-    hh_out[i] = hi + P.diffusion * hs + source - P.decay * hi;
-    pos_out[i] = vec4<f32>(pi.xyz + disp, min(pi.w + P.growth, P.r_div));
+    let volume = pi.w * pi.w * pi.w;
+    hh_out[i] = hi + P.diffusion * spread + P.polar * fall + P.production * volume - P.decay * hi;
+    let conc = hi / volume;
+    pos_out[i] = vec4<f32>(pi.xyz + disp, min(pi.w + P.growth * (conc / (P.half_sat + conc)), P.r_div));
 }

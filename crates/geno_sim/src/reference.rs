@@ -3,7 +3,7 @@
 use crate::cells::Cells;
 use crate::engine::{Engine, EngineError};
 use crate::params::Params;
-use crate::rules::{divide, finish, interact};
+use crate::rules::{Gathered, divide, finish, interact};
 
 pub struct Reference {
     p: Params,
@@ -28,21 +28,13 @@ impl Engine for Reference {
         let n = self.cur.count;
         for i in 0..n {
             let (pi, hi) = (self.cur.pr[i], self.cur.h[i]);
-            let (mut disp, mut hs) = ([0.0f32; 3], 0.0f32);
+            let mut g = Gathered::default();
             for j in 0..n {
                 if j != i {
-                    interact(
-                        &pi,
-                        hi,
-                        &self.cur.pr[j],
-                        self.cur.h[j],
-                        &self.p,
-                        &mut disp,
-                        &mut hs,
-                    );
+                    interact(&pi, hi, &self.cur.pr[j], self.cur.h[j], &self.p, &mut g);
                 }
             }
-            let (pr, h) = finish(&pi, hi, &disp, hs, &self.p);
+            let (pr, h) = finish(&pi, hi, &g, &self.p);
             self.next.pr[i] = pr;
             self.next.h[i] = h;
         }
