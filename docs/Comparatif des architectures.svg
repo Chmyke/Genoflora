@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 640" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="800" height="640" fill="#ffffff"/>
+  <text x="30" y="40" font-size="22" font-weight="700" fill="#1a1a1a">Genoflora : GPU seul ou GPU + juge CPU ?</text>
+  <text x="30" y="64" font-size="14" fill="#555">Mesures des essais du 25 novembre 2026, RTX 4080 SUPER</text>
+
+  <text x="30" y="110" font-size="16" font-weight="700" fill="#1a1a1a">1. Cellules tenues à 30 pas par seconde (plus long = mieux)</text>
+  <text x="30" y="140" font-size="14" fill="#333">Tout sur CPU</text>
+  <rect x="220" y="126" width="57" height="20" fill="#9aa3ad"/>
+  <text x="285" y="141" font-size="14" fill="#333">1,25 million</text>
+  <text x="30" y="170" font-size="14" fill="#333">Tout sur GPU</text>
+  <rect x="220" y="156" width="500" height="20" fill="#2e8b57"/>
+  <text x="728" y="171" font-size="14" fill="#333">11 millions</text>
+  <text x="30" y="198" font-size="13" fill="#555">Le GPU fait tourner la plante dans les deux solutions : même vitesse, aucune différence ici.</text>
+
+  <text x="30" y="250" font-size="16" font-weight="700" fill="#1a1a1a">2. Une ronde de division à 1 million de cellules (plus court = mieux)</text>
+  <text x="30" y="280" font-size="14" fill="#333">Division sur GPU</text>
+  <rect x="220" y="266" width="33" height="20" fill="#2e8b57"/>
+  <text x="261" y="281" font-size="14" fill="#333">0,76 ms</text>
+  <text x="30" y="310" font-size="14" fill="#333">Division sur CPU (hybride)</text>
+  <rect x="220" y="296" width="500" height="20" fill="#c0504d"/>
+  <text x="728" y="311" font-size="14" fill="#333">11,4 ms</text>
+  <text x="30" y="338" font-size="13" fill="#555">Le vrai hybride (le CPU travaille pendant que la plante tourne) est 15 fois plus lent ici : écarté.</text>
+
+  <text x="30" y="390" font-size="16" font-weight="700" fill="#1a1a1a">3. Lignes à écrire pour ajouter une règle biologique (plus court = mieux)</text>
+  <text x="30" y="420" font-size="14" fill="#333">GPU seul</text>
+  <rect x="220" y="406" width="317" height="20" fill="#2e8b57"/>
+  <text x="545" y="421" font-size="14" fill="#333">19 lignes</text>
+  <text x="30" y="450" font-size="14" fill="#333">GPU + juge CPU</text>
+  <rect x="220" y="436" width="500" height="20" fill="#d9a441"/>
+  <text x="728" y="451" font-size="14" fill="#333">30 lignes</text>
+  <text x="30" y="478" font-size="13" fill="#555">C'est le seul vrai coût du juge : chaque règle s'écrit deux fois (19 lignes GPU + 11 lignes CPU).</text>
+
+  <rect x="30" y="510" width="740" height="104" fill="#f1f6f2" stroke="#2e8b57"/>
+  <text x="46" y="536" font-size="15" font-weight="700" fill="#1a1a1a">À retenir</text>
+  <text x="46" y="560" font-size="14" fill="#333">La plante tourne à 100 % sur le GPU dans les deux cas. Ton intuition est la bonne.</text>
+  <text x="46" y="582" font-size="14" fill="#333">La seule question : garder ou non une petite version CPU qui sert de juge dans les tests.</text>
+  <text x="46" y="604" font-size="14" fill="#333">Supprimer le juge plus tard est gratuit. L'ajouter plus tard coûte cher.</text>
+</svg>
