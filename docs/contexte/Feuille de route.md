@@ -514,8 +514,53 @@ plantes.md`. Elle nuance la suite : dans tous les modèles publiés, la taille d
 tient à un repère de surface et à un relais qui monte (WUS), pas à un signal de retenue seul ; et
 le maximum étroit de la racine y est obtenu en imposant le sens des pompes par tissu.
 
-Prochaine étape : fixer la taille du foyer de la pointe de tige (signal de retenue émis par les
-cellules jeunes, validé par Mickaël : CLV3 seul ; à mesurer pour ce qu'il donne, la recherche
-désignant un relais de type WUS comme cause probable si le centre du foyer mûrit avant ses
-bords), puis un maximum d'auxine étroit à la pointe de racine (fontaine inversée). La mesure à
-faire bouger existe : `the_tip_of_the_stem_has_no_steady_size_yet`.
+Le signal de retenue seul, mesuré (2026-11-25). Troisième substance du modèle (après l'auxine et
+la cytokinine) : une cellule assez jeune pour se diviser l'émet, elle diffuse et s'efface, et elle
+atténue ce que la cytokinine réclame pour garder une cellule jeune (la moitié CLV3 de la boucle
+WUS / CLV3, sans relais). Elle n'agit pas sur la jeunesse tenue par l'auxine (la racine). Règle
+dans le juge, recopiée sur la carte et comparée cellule par cellule ; éteinte dans le génome par
+défaut (`restraint_made` 0), parce qu'elle ne donne pas le résultat.
+
+Soixante réglages (force et portée), puis trois graines sur les meilleurs :
+
+| Signal | Ce que fait la pointe |
+|---|---|
+| Faible | rien ne change : le plus gros foyer erre toujours de 3 à plus de 100 cellules |
+| Meilleur réglage trouvé (`restraint_made` 0,05, `restraint_decay` 0,1) | 9 à 35 cellules sur une graine, 4 à 64 et 6 à 140 sur les deux autres |
+| Trois fois plus fort | aucune tige ne sort (une cellule à l'air après 40 000 pas) |
+
+La fenêtre entre « sans effet » et « plus de tige » tient dans un facteur trois, et elle ne tient
+pas d'une graine à l'autre. Le signal seul ne fixe donc pas la taille de la pointe.
+
+Pourquoi, et ce n'est pas le cas prévu (« le centre du foyer mûrit avant ses bords ») : il n'y a
+ni centre ni bord. Mesuré cellule par cellule, toute la tige a une jeunesse entre 0,3 et 0,6, et
+92 à 99 % des cellules éclairées sont entre 0,4 et 0,6, collées au seuil de division (0,5). La
+cytokinine est à peu près aussi abondante sur tout le sommet éclairé (1,2 à 1,5 sur huit rayons
+autour du foyer) et ce qu'elle réclame vaut presque exactement le seuil. Un « foyer » est donc
+l'ensemble des cellules qui se trouvent un cheveu au-dessus de 0,5 : il enfle et se vide au gré de
+variations de 0,02. Le signal de retenue, mesuré, vaut partout pareil (0,070 à 0,073 du centre au
+bord) : il déplace tout le monde ensemble par rapport au seuil, d'où le tout ou rien.
+
+Première forme essayée et écartée : émission proportionnelle à la jeunesse. Comme toutes les
+jeunesses valent environ 0,5, les cellules mûres émettaient autant que les jeunes.
+
+Cause manquante désignée par la mesure : rien, dans la tige, ne sépare nettement une cellule
+jeune d'une cellule mûre, ni ne désigne un endroit. C'est ce que la recherche attribue au relais
+de type WUS et au repère de surface (section 2 et 5 de `docs/Modèles scientifiques de plantes.md`).
+À proposer à Mickaël avant tout ajout.
+
+Tests : `a_restraint_signal_alone_does_not_hold_the_tip` enregistre l'errance avec le signal, et
+`the_tip_of_the_stem_has_no_steady_size_yet` enregistre en plus la jeunesse collée au seuil
+(mesure `checks::on_the_edge`). Les deux doivent casser le jour où la pointe tiendra sa taille.
+
+Outils : la sonde `tip` (`cargo run --release -p geno_gpu --example tip -- <pas> <relevés>
+[paramètre=valeur]`) imprime à chaque relevé les foyers à l'air et le profil du centre au bord du
+foyer le plus haut (mesure `checks::profile`). Les sondes acceptent tous les paramètres du génome
+par leur nom (`Params::set`). Les relevés de `germinate` ont une colonne de plus (le signal de
+retenue, après la cytokinine) et la visionneuse l'affiche ; les relevés d'avant ne se relisent
+plus avec la visionneuse d'aujourd'hui.
+
+Prochaine étape : décision de Mickaël sur la cause à ajouter pour la pointe de tige (relais de
+type WUS et repère de surface), puis un maximum d'auxine étroit à la pointe de racine (fontaine
+inversée). Les mesures à faire bouger existent : `the_tip_of_the_stem_has_no_steady_size_yet` et
+`a_restraint_signal_alone_does_not_hold_the_tip`.

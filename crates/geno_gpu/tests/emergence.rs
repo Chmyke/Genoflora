@@ -3,7 +3,7 @@
 //! (the software adapter would take hours).
 
 use geno_gpu::{Adapter, GpuSim};
-use geno_sim::checks::{foci, lie, packing, run};
+use geno_sim::checks::{foci, lie, on_the_edge, packing, run};
 use geno_sim::{Cells, Engine, EngineError, Params};
 
 /// Grows a seed until the tissue is nearly full, or `None` without a graphics card.
@@ -222,7 +222,7 @@ fn the_reference_plant_does_not_pile_up() -> Result<(), EngineError> {
         eprintln!("shade {}: {packed:?}", p.shade);
         assert!(packed.lowest >= 0.0, "{packed:?}");
         assert!(
-            packed.neighbours * p.ck_diffusion.max(p.diffusion) < 1.5,
+            packed.neighbours * p.ck_diffusion.max(p.diffusion).max(p.restraint_diffusion) < 1.5,
             "{packed:?}"
         );
     }
@@ -236,6 +236,10 @@ fn the_reference_plant_does_not_pile_up() -> Result<(), EngineError> {
 // leaves: same hormones as the tip, never flat, no regular spacing). This test records the
 // wandering size; it is expected to break the day the tip holds its size (in real plants, the
 // stem cells hold back their neighbours: WUS/CLV3).
+// Why it wanders, measured 2026-11-25: no cell of the stem is clearly young or clearly mature.
+// Cytokinin is about as rich all over the lit top, and what it calls for sits right at the
+// threshold under which a cell stops dividing: every lit cell has a youth between 0.4 and 0.6,
+// so a focus is whichever cells happen to stand a hair above one half.
 #[test]
 fn the_tip_of_the_stem_has_no_steady_size_yet() -> Result<(), EngineError> {
     for seed in 1..=3 {
@@ -254,6 +258,53 @@ fn the_tip_of_the_stem_has_no_steady_size_yet() -> Result<(), EngineError> {
             }
             branches = aerial.iter().filter(|f| f.cells >= 6).count();
         })?;
+        let Some(cells) = grown else {
+            return Ok(());
+        };
+        let (low, high) = (
+            sizes.iter().copied().min().unwrap_or(0),
+            sizes.iter().copied().max().unwrap_or(0),
+        );
+        let lit = |i: usize| cells.pin[i][3] >= 0.5 && geno_sim::soil::share(&p, &cells.pr[i][..3]) < 0.5;
+        let undecided = on_the_edge(&cells, 0.1, lit);
+        eprintln!(
+            "seed {seed}: biggest focus in the air {sizes:?}, {branches} foci at the end, {undecided:.2} of the lit cells on the edge"
+        );
+        assert!(
+            sizes.len() >= 5,
+            "seed {seed}: the stem came out too late, {sizes:?}"
+        );
+        assert!(high >= 4 * low.max(1), "seed {seed}: {sizes:?}");
+        assert!(undecided >= 0.9, "seed {seed}: {undecided}");
+    }
+    Ok(())
+}
+
+// A restraint signal made by the cells that can divide, which dulls what cytokinin calls for (the
+// CLV3 half of the WUS/CLV3 loop, alone). Measured 2026-11-25 on sixty settings and three seeds:
+// it does not hold the size of the tip. Weak, nothing changes; three times stronger than the best
+// setting, no stem comes out at all; in between, the wandering narrows on one seed (9 to 35 cells)
+// and not on the next (6 to 140). The signal has nothing to tell apart: the cells of the stem all
+// sit next to the threshold (see above). This test records it on the best setting found; it is
+// expected to break the day a tip holds its size.
+#[test]
+fn a_restraint_signal_alone_does_not_hold_the_tip() -> Result<(), EngineError> {
+    let mut widest = 0;
+    for seed in 1..=3 {
+        let p = Params {
+            seed,
+            restraint_made: 0.05,
+            restraint_decay: 0.1,
+            ..Params::default()
+        };
+        let mut sizes = Vec::new();
+        let grown = grow_watched(&p, 1000, |cells| {
+            let aerial = foci(cells, &p, |q| geno_sim::soil::share(&p, &q[..3]) < 0.5);
+            let biggest = aerial.first().map_or(0, |f| f.cells);
+            if biggest >= 10 || !sizes.is_empty() {
+                sizes.push(biggest);
+            }
+        })?;
         if grown.is_none() {
             return Ok(());
         }
@@ -261,12 +312,13 @@ fn the_tip_of_the_stem_has_no_steady_size_yet() -> Result<(), EngineError> {
             sizes.iter().copied().min().unwrap_or(0),
             sizes.iter().copied().max().unwrap_or(0),
         );
-        eprintln!("seed {seed}: biggest focus in the air {sizes:?}, {branches} foci at the end");
+        eprintln!("seed {seed}: biggest focus in the air {sizes:?}");
         assert!(
             sizes.len() >= 5,
             "seed {seed}: the stem came out too late, {sizes:?}"
         );
-        assert!(high >= 4 * low.max(1), "seed {seed}: {sizes:?}");
+        widest = widest.max(high / low.max(1));
     }
+    assert!(widest >= 8, "the tip wandered by a factor {widest} at most");
     Ok(())
 }

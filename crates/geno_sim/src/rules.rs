@@ -13,7 +13,7 @@ pub struct Gathered {
     pub disp: [f32; 3],
     /// Sum over the neighbours of the hormone each would send by passive diffusion, per unit of
     /// diffusion rate.
-    pub spread: [f32; 2],
+    pub spread: [f32; 3],
     /// Auxin pumped in by the neighbours minus auxin pumped out to them (PIN transport).
     pub pumped: f32,
     /// Net auxin flow through the cell, as a vector (sum of what each neighbour sends, along the
@@ -76,12 +76,10 @@ pub fn interact(me: &Cell, other: &Cell, p: &Params, g: &mut Gathered) {
     let (hi, hj) = (me.h, other.h);
     let (vi, vj) = (pi[3] * pi[3] * pi[3], pj[3] * pj[3] * pj[3]);
     let level = 2.0 * vi * vj / (vi + vj);
-    let gap = [
-        (hj[0] / vj - hi[0] / vi) * level,
-        (hj[1] / vj - hi[1] / vi) * level,
-    ];
+    let gap = [0, 1, 2].map(|k| (hj[k] / vj - hi[k] / vi) * level);
     g.spread[0] += gap[0];
     g.spread[1] += gap[1];
+    g.spread[2] += gap[2];
     // Active transport: each cell pumps auxin out on the side its pumps sit, in proportion to how
     // squarely the neighbour faces that side. `u` points from `other` to `me`. Both cells compute
     // exact opposites, so what one pumps out is exactly what the other receives.
@@ -113,6 +111,13 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     let cytokinin =
         hi[1] + p.ck_diffusion * g.spread[1] + p.ck_production * hi[0] + p.ck_light * lit * volume
             - p.ck_decay * hi[1];
+    // Only a cell young enough to divide makes the restraint signal, which wanders like cytokinin
+    // and fades faster. Made in proportion to youth instead, it came out the same from every cell
+    // of a stem, whose youths all sit next to the threshold (measured 2026-11-25).
+    let restraint = hi[2]
+        + p.restraint_diffusion * g.spread[2]
+        + p.restraint_made * f32::from(u8::from(me.youth > YOUNG)) * volume
+        - p.restraint_decay * hi[2];
     // Even growth, up to the dividing size: holding a lot of auxin, or holding cytokinin while
     // auxin is scarce.
     let (ca, cc) = (hi[0] / volume, hi[1] / volume);
@@ -157,7 +162,9 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     pin[3] = lit;
     // A cell stays young where auxin gathers (root tip), or where cytokinin gathers while auxin
     // is scarce (shoot tip); it matures elsewhere, and turns young again if they come back.
-    let calls = (ca / (p.youth_half + ca) + ck_push).min(1.0);
+    // The restraint signal dulls what cytokinin calls for: where young cells crowd, the call fades.
+    let heard = ck_push * (p.restraint_half / (p.restraint_half + hi[2] / volume));
+    let calls = (ca / (p.youth_half + ca) + heard).min(1.0);
     let youth = me.youth + p.youth_rate * (calls - me.youth);
     Cell {
         pr: [
@@ -167,7 +174,7 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
             even * (1.0 + eps).powf(1.0 / 3.0),
         ],
         shape,
-        h: [auxin, cytokinin],
+        h: [auxin, cytokinin, restraint],
         pin,
         youth,
     }
@@ -257,7 +264,7 @@ mod tests {
         Cell {
             pr: [at[0], at[1], at[2], r],
             shape: sphere(r, [1.0, 0.0, 0.0]),
-            h,
+            h: [h[0], h[1], 0.0],
             pin: [0.0; 4],
             youth: 1.0,
         }
@@ -452,6 +459,52 @@ mod tests {
         assert!(after(0.0, 50.0, 1000) > 0.9);
         // Slowly: the cell remembers what it was.
         assert!(after(1.0, 0.0, 10) > 0.85);
+    }
+
+    #[test]
+    fn a_young_cell_makes_the_restraint_signal_and_a_mature_one_does_not() {
+        let p = Params {
+            restraint_made: 0.01,
+            ..Params::default()
+        };
+        let made = |youth: f32| {
+            let c = Cell {
+                youth,
+                ..cell([0.0; 3], 1.0, [0.0; 2])
+            };
+            finish(&c, &Gathered::default(), &p).h[2]
+        };
+        assert!((made(1.0) - 0.01).abs() < 1e-7);
+        assert_eq!(made(0.6), made(1.0));
+        assert_eq!(made(YOUNG), 0.0);
+        assert_eq!(made(0.0), 0.0);
+    }
+
+    #[test]
+    fn the_restraint_signal_dulls_the_call_of_cytokinin_not_the_call_of_auxin() {
+        let p = Params {
+            restraint_half: 1.0,
+            ..Params::default()
+        };
+        // Youth after a long time, for a cell holding these hormones and this much restraint.
+        let settled = |h: [f32; 2], restraint: f32| {
+            let mut c = Cell {
+                h: [h[0], h[1], restraint],
+                ..cell([0.0; 3], 1.0, h)
+            };
+            for _ in 0..2000 {
+                c.youth = finish(&c, &Gathered::default(), &p).youth;
+            }
+            c.youth
+        };
+        // Plenty of cytokinin keeps the cell young; enough restraint lets it mature anyway.
+        assert!(settled([0.0, 50.0], 0.0) > 0.9);
+        assert!(settled([0.0, 50.0], 9.0) < 0.15);
+        // At `restraint_half` it hears half of the call.
+        let (half, full) = (settled([0.0, 50.0], 1.0), settled([0.0, 50.0], 0.0));
+        assert!((half - 0.5 * full).abs() < 0.01, "{half} against {full}");
+        // A cell kept young by auxin does not hear the restraint.
+        assert_eq!(settled([50.0, 0.0], 9.0), settled([50.0, 0.0], 0.0));
     }
 
     #[test]

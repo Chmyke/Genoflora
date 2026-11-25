@@ -67,6 +67,17 @@ pub struct Params {
     /// Auxin concentration that halves the push of cytokinin (the two hormones oppose each
     /// other: what counts is their ratio).
     pub ck_block: f32,
+    /// Restraint signal a cell young enough to divide makes per step, per unit of its volume (the
+    /// stem cells of a shoot tip make a small peptide, CLV3, that holds back the cells around
+    /// them; 0: none).
+    pub restraint_made: f32,
+    /// Same as `diffusion`, for the restraint signal.
+    pub restraint_diffusion: f32,
+    /// Fraction of the restraint signal lost per step.
+    pub restraint_decay: f32,
+    /// Restraint concentration at which a cell hears only half of what cytokinin calls for to
+    /// keep it young.
+    pub restraint_half: f32,
     /// Relative growth per step along the growth direction, for a cell holding just the right
     /// amount of auxin (this growth adds volume, like water taken up).
     pub elong: f32,
@@ -110,6 +121,64 @@ pub struct Params {
     pub shade: f32,
 }
 
+impl Params {
+    /// Sets one parameter by its name, from text: what a probe reads on its command line.
+    pub fn set(&mut self, name: &str, value: &str) -> Result<(), String> {
+        let bad = |e: &dyn std::fmt::Display| format!("{name}={value}: {e}");
+        let rate = match name {
+            "seed" => {
+                self.seed = value.parse().map_err(|e| bad(&e))?;
+                return Ok(());
+            }
+            "divide_every" => {
+                self.divide_every = value.parse().map_err(|e| bad(&e))?;
+                return Ok(());
+            }
+            "r_div" => &mut self.r_div,
+            "growth" => &mut self.growth,
+            "half_sat" => &mut self.half_sat,
+            "mob_rep" => &mut self.mob_rep,
+            "mob_adh" => &mut self.mob_adh,
+            "reach" => &mut self.reach,
+            "diffusion" => &mut self.diffusion,
+            "polar" => &mut self.polar,
+            "pin_rate" => &mut self.pin_rate,
+            "pin_switch" => &mut self.pin_switch,
+            "flux_half" => &mut self.flux_half,
+            "gravisense" => &mut self.gravisense,
+            "production" => &mut self.production,
+            "light_production" => &mut self.light_production,
+            "decay" => &mut self.decay,
+            "ck_production" => &mut self.ck_production,
+            "ck_light" => &mut self.ck_light,
+            "ck_diffusion" => &mut self.ck_diffusion,
+            "ck_decay" => &mut self.ck_decay,
+            "ck_half" => &mut self.ck_half,
+            "ck_block" => &mut self.ck_block,
+            "restraint_made" => &mut self.restraint_made,
+            "restraint_diffusion" => &mut self.restraint_diffusion,
+            "restraint_decay" => &mut self.restraint_decay,
+            "restraint_half" => &mut self.restraint_half,
+            "elong" => &mut self.elong,
+            "e_half" => &mut self.e_half,
+            "e_block" => &mut self.e_block,
+            "squeeze_hold" => &mut self.squeeze_hold,
+            "youth_rate" => &mut self.youth_rate,
+            "youth_half" => &mut self.youth_half,
+            "max_half_length" => &mut self.max_half_length,
+            "align" => &mut self.align,
+            "surface" => &mut self.surface,
+            "soil_grip" => &mut self.soil_grip,
+            "soil_hardness" => &mut self.soil_hardness,
+            "light_depth" => &mut self.light_depth,
+            "shade" => &mut self.shade,
+            _ => return Err(format!("unknown parameter {name}")),
+        };
+        *rate = value.parse().map_err(|e| bad(&e))?;
+        Ok(())
+    }
+}
+
 impl Default for Params {
     fn default() -> Self {
         Self {
@@ -137,6 +206,12 @@ impl Default for Params {
             ck_decay: 0.001,
             ck_half: 1.0,
             ck_block: 1.0,
+            // Off in the default genome: measured on 2026-11-25, this signal alone does not hold
+            // the size of the shoot tip (see docs/contexte/Feuille de route.md).
+            restraint_made: 0.0,
+            restraint_diffusion: 0.05,
+            restraint_decay: 0.01,
+            restraint_half: 1.0,
             // Off in the default genome: cells stay round.
             elong: 0.0,
             e_half: 1.0,

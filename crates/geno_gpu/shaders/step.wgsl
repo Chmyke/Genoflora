@@ -3,12 +3,12 @@
 // Mirrors geno_sim::rules::{interact, finish}.
 @group(0) @binding(1) var<storage, read> S: State;
 @group(0) @binding(2) var<storage, read> pos: array<vec4<f32>>;
-@group(0) @binding(3) var<storage, read> hh: array<vec2<f32>>;
+@group(0) @binding(3) var<storage, read> hh: array<vec3<f32>>;
 @group(0) @binding(4) var<storage, read> spos: array<vec4<f32>>;
 @group(0) @binding(5) var<storage, read> shid: array<Tagged>;
 @group(0) @binding(6) var<storage, read> offsets: array<u32>;
 @group(0) @binding(7) var<storage, read_write> pos_out: array<vec4<f32>>;
-@group(0) @binding(8) var<storage, read_write> hh_out: array<vec2<f32>>;
+@group(0) @binding(8) var<storage, read_write> hh_out: array<vec3<f32>>;
 @group(0) @binding(9) var<storage, read> shape: array<Shape>;
 @group(0) @binding(10) var<storage, read> sshape: array<Shape>;
 @group(0) @binding(11) var<storage, read_write> shape_out: array<Shape>;
@@ -29,7 +29,7 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     let c = vec3<i32>(cell_coord(pi.xyz));
     let top = i32(P.g1) - 1;
     var disp = vec3<f32>(0.0);
-    var spread = vec2<f32>(0.0);
+    var spread = vec3<f32>(0.0);
     var pumped = 0.0;
     var flux = vec3<f32>(0.0);
     var richer = vec3<f32>(0.0);
@@ -86,7 +86,8 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     let made = (P.production + P.light_production * lit) * vi;
     let auxin = hi.x + P.diffusion * spread.x + P.polar * pumped + made - P.decay * hi.x;
     let cytokinin = hi.y + P.ck_diffusion * spread.y + P.ck_production * hi.x + P.ck_light * lit * vi - P.ck_decay * hi.y;
-    hh_out[i] = vec2<f32>(auxin, cytokinin);
+    let restraint = hi.z + P.restraint_diffusion * spread.z + P.restraint_made * f32(youth[i] > 0.5) * vi - P.restraint_decay * hi.z;
+    hh_out[i] = vec3<f32>(auxin, cytokinin, restraint);
     let ca = hi.x / vi;
     let cc = hi.y / vi;
     let ck_push = (cc / (P.ck_half + cc)) * (P.ck_block / (P.ck_block + ca));
@@ -119,6 +120,7 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     // w keeps the light received, for display only.
     pin_out[i] = vec4<f32>(n * keep, lit);
     // Youth: toward what the auxin calls for (mirrors finish).
-    let calls = min(ca / (P.youth_half + ca) + ck_push, 1.0);
+    let heard = ck_push * (P.restraint_half / (P.restraint_half + hi.z / vi));
+    let calls = min(ca / (P.youth_half + ca) + heard, 1.0);
     youth_out[i] = youth[i] + P.youth_rate * (calls - youth[i]);
 }

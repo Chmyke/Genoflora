@@ -37,7 +37,7 @@ pub fn lattice(n: usize, capacity: usize, p: &Params) -> Cells {
             p.r_div * (0.8 + 0.2 * unit(hash(p.seed, id, 3))),
         ];
         cells.shape[i] = crate::shape::sphere(cells.pr[i][3], a);
-        cells.h[i] = [unit(hash(p.seed, id, 4)), unit(hash(p.seed, id, 5))];
+        cells.h[i] = [4, 5, 6].map(|salt| unit(hash(p.seed, id, salt)));
     }
     cells
 }
@@ -149,12 +149,59 @@ pub fn foci(c: &Cells, p: &Params, keep: impl Fn(&[f32; 4]) -> bool) -> Vec<Focu
     out
 }
 
-/// Total hormone, both kinds together.
-pub fn mass(c: &Cells) -> f64 {
-    c.hormone()
+/// Share of the cells that `keep` retains whose youth lies within `margin` of the threshold under
+/// which a cell stops dividing: cells that are neither clearly young nor clearly mature.
+pub fn on_the_edge(c: &Cells, margin: f32, keep: impl Fn(usize) -> bool) -> f32 {
+    let kept: Vec<usize> = (0..c.count).filter(|&i| keep(i)).collect();
+    let near = kept
         .iter()
-        .map(|h| f64::from(h[0]) + f64::from(h[1]))
-        .sum()
+        .filter(|&&i| (c.youth[i] - crate::params::YOUNG).abs() <= margin)
+        .count();
+    near as f32 / kept.len().max(1) as f32
+}
+
+/// The lit cells at one distance from a point (the centre of a focus, usually).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Ring {
+    pub cells: usize,
+    /// Share of them that are young.
+    pub young: f32,
+    /// Mean concentrations.
+    pub auxin: f32,
+    pub cytokinin: f32,
+    pub restraint: f32,
+}
+
+/// The lit cells around `centre`, in `rings` rings one dividing radius wide. Only the cells that
+/// received at least half of the full light count: the skin of the tissue, where a tip lives.
+pub fn profile(c: &Cells, centre: [f32; 3], rings: usize) -> Vec<Ring> {
+    let mut out = vec![Ring::default(); rings];
+    for i in (0..c.count).filter(|&i| c.pin[i][3] >= 0.5) {
+        let q = c.pr[i];
+        let d2: f32 = (0..3).map(|k| (q[k] - centre[k]).powi(2)).sum();
+        let Some(ring) = out.get_mut(d2.sqrt() as usize) else {
+            continue;
+        };
+        let volume = q[3] * q[3] * q[3];
+        ring.cells += 1;
+        ring.young += f32::from(u8::from(c.youth[i] > crate::params::YOUNG));
+        ring.auxin += c.h[i][0] / volume;
+        ring.cytokinin += c.h[i][1] / volume;
+        ring.restraint += c.h[i][2] / volume;
+    }
+    for ring in &mut out {
+        let n = ring.cells.max(1) as f32;
+        ring.young /= n;
+        ring.auxin /= n;
+        ring.cytokinin /= n;
+        ring.restraint /= n;
+    }
+    out
+}
+
+/// Total hormone, all kinds together.
+pub fn mass(c: &Cells) -> f64 {
+    c.hormone().iter().flatten().map(|&h| f64::from(h)).sum()
 }
 
 /// Total cell volume, up to the constant 4/3 pi.
@@ -396,6 +443,7 @@ mod tests {
             ck_production: 0.0,
             ck_light: 0.0,
             ck_decay: 0.0,
+            restraint_decay: 0.0,
             ..Params::default()
         };
         let drift = mass_drift(&mut judge(&p, 300, 300), 500)?;

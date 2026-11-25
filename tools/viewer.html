@@ -49,7 +49,7 @@
 </main>
 <script>
 const DATA = /*DATA*/null;
-const N = 11; // numbers per cell: x y z r auxin cytokinin youth light pinx piny pinz
+const N = 12; // numbers per cell: x y z r auxin cytokinin youth light pinx piny pinz restraint
 const SEQ = [[68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37]];
 const DIV = [[33, 102, 172], [146, 197, 222], [247, 247, 247], [244, 165, 130], [178, 24, 43]];
 
@@ -72,6 +72,7 @@ function high(field) {
 const QUANTITIES = [
   { name: "Auxine", note: "concentration ; s'accumule à la pointe de la racine", get: (s, i) => s[i + 4], max: high(4), stops: SEQ, root: true },
   { name: "Cytokinine", note: "concentration ; fabriquée à la lumière", get: (s, i) => s[i + 5], max: high(5), stops: SEQ, root: true },
+  { name: "Signal de retenue", note: "concentration ; émis par les cellules jeunes", get: (s, i) => s[i + 11], max: high(11), stops: SEQ, root: true },
   { name: "Jeunesse", note: "au-dessus de 0,5 la cellule peut se diviser", get: (s, i) => s[i + 6], max: 1, stops: SEQ },
   { name: "Lumière reçue", note: "sombre : dans la terre ou à l'ombre d'autres cellules", get: (s, i) => s[i + 7], max: 1, stops: SEQ },
   { name: "Pompes, sens vertical", note: "bleu : pompent vers le bas ; rouge : vers le haut", get: (s, i) => s[i + 9], min: -1, max: 1, stops: DIV },
@@ -153,6 +154,7 @@ function describe(i) {
     `Rayon : ${f(s[i + 3])}`,
     `Auxine : ${f(s[i + 4])}`,
     `Cytokinine : ${f(s[i + 5])}`,
+    `Signal de retenue : ${f(s[i + 11])}`,
     `Jeunesse : ${f(s[i + 6])} (${s[i + 6] > 0.5 ? "peut se diviser" : "mûre"})`,
     `Lumière reçue : ${f(s[i + 7])}`,
     `Pompes : force ${f(Math.hypot(s[i + 8], s[i + 9], s[i + 10]))}, ${s[i + 9] < 0 ? "vers le bas" : "vers le haut"}`,

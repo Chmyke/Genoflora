@@ -11,20 +11,22 @@ import os
 import sys
 
 # Columns of the CSV, see crates/geno_gpu/examples/germinate.rs.
-X, Y, Z, R, AUXIN, CYTOKININ = 0, 1, 2, 3, 4, 5
-PIN, YOUTH, LIGHT = 15, 18, 19
+X, Y, Z, R, AUXIN, CYTOKININ, RESTRAINT = 0, 1, 2, 3, 4, 5, 6
+PIN, YOUTH, LIGHT = 16, 19, 20
+# Numbers kept per cell, see N in viewer.html.
+KEPT = 12
 
 
 def load(path):
     """One snapshot as a flat list: x, y, z, r, auxin and cytokinin concentrations, youth, light,
-    pump polarity xyz, per cell."""
+    pump polarity xyz, restraint signal concentration, per cell."""
     flat = []
     with open(path, encoding="ascii") as lines:
         for line in lines:
             v = [float(c) for c in line.split(",")]
             volume = v[R] ** 3
             cell = [v[X], v[Y], v[Z], v[R], v[AUXIN] / volume, v[CYTOKININ] / volume,
-                    v[YOUTH], v[LIGHT], v[PIN], v[PIN + 1], v[PIN + 2]]
+                    v[YOUTH], v[LIGHT], v[PIN], v[PIN + 1], v[PIN + 2], v[RESTRAINT] / volume]
             flat.extend(round(c, 3) for c in cell)
     return flat
 
@@ -46,7 +48,7 @@ def main():
     data = json.dumps({"surface": surface, "shots": shots}, separators=(",", ":"))
     with open(out, "w", encoding="utf-8", newline="\n") as target:
         target.write(html.replace("/*DATA*/null", data))
-    print(f"{out}: {len(shots)} snapshots, {len(shots[-1]) // 11} cells in the last one")
+    print(f"{out}: {len(shots)} snapshots, {len(shots[-1]) // KEPT} cells in the last one")
 
 
 if __name__ == "__main__":

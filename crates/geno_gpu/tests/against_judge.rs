@@ -61,8 +61,9 @@ fn matches_the_judge_cell_by_cell_on_a_short_run() -> Result<(), EngineError> {
     on_each_adapter(|adapter| {
         // The test tissue straddles the soil surface: part of it in the dark, part in the light.
         // Its cells mature fast and answer cytokinin weakly (the test tissue starts full of it), so
-        // that some stop dividing within the run.
+        // that some stop dividing within the run. They make the restraint signal too.
         let p = Params {
+            restraint_made: 0.01,
             youth_rate: 0.05,
             ck_light: 0.001,
             ck_half: 20.0,
@@ -138,6 +139,7 @@ fn diffusion_conserves_the_hormone() -> Result<(), EngineError> {
             ck_production: 0.0,
             ck_light: 0.0,
             ck_decay: 0.0,
+            restraint_decay: 0.0,
             ..Params::default()
         };
         let drift = mass_drift(&mut engine(&p, 1000, 1000, adapter)?, 1000)?;

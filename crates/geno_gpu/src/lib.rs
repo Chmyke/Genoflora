@@ -83,8 +83,10 @@ pub struct GpuSim {
     scan_div: Scan,
 }
 
-/// Size of the uniform block: 44 four-byte fields.
-const PARAMS_BYTES: usize = 176;
+/// Size of the uniform block: 48 four-byte fields.
+const PARAMS_BYTES: usize = 192;
+/// Bytes of one cell's hormones on the GPU: a `vec3<f32>` takes the room of four floats.
+const HORMONE_BYTES: usize = 16;
 
 /// The current cells, as GPU buffers (layouts in `shaders/common.wgsl`). `state` starts with
 /// the live cell count.
@@ -146,6 +148,10 @@ fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
         f(p.ck_light),
         f(p.shade),
         f(p.squeeze_hold),
+        f(p.restraint_made),
+        f(p.restraint_diffusion),
+        f(p.restraint_decay),
+        f(p.restraint_half),
     ]
     .concat()
 }
@@ -202,7 +208,10 @@ impl GpuSim {
             buffer("pos0", capacity * 16, data),
             buffer("pos1", capacity * 16, data),
         ];
-        let hh = [buffer("h0", capacity * 8, data), buffer("h1", capacity * 8, data)];
+        let hh = [
+            buffer("h0", capacity * HORMONE_BYTES, data),
+            buffer("h1", capacity * HORMONE_BYTES, data),
+        ];
         let shape = [
             buffer("shape0", capacity * 48, data),
             buffer("shape1", capacity * 48, data),
@@ -220,7 +229,7 @@ impl GpuSim {
         let params = buffer("params", PARAMS_BYTES, U::UNIFORM | U::COPY_DST);
         let stage = U::MAP_READ | U::COPY_DST;
         let stage_pos = buffer("stage pos", capacity * 16, stage);
-        let stage_hh = buffer("stage h", capacity * 8, stage);
+        let stage_hh = buffer("stage h", capacity * HORMONE_BYTES, stage);
         let stage_shape = buffer("stage shape", capacity * 48, stage);
         let stage_pin = buffer("stage pin", capacity * 16, stage);
         let stage_youth = buffer("stage youth", capacity * 4, stage);
@@ -562,14 +571,17 @@ impl GpuSim {
         self.flush()?;
         let count = count.min(self.capacity);
         let pr = self.read(&self.pos[self.cur], &self.stage_pos, count * 16)?;
-        let h = self.read(&self.hh[self.cur], &self.stage_hh, count * 8)?;
+        let h = self.read(&self.hh[self.cur], &self.stage_hh, count * HORMONE_BYTES)?;
         let shape = self.read(&self.shape[self.cur], &self.stage_shape, count * 48)?;
         let pin = self.read(&self.pin[self.cur], &self.stage_pin, count * 16)?;
         let youth = self.read(&self.youth[self.cur], &self.stage_youth, count * 4)?;
         let mut cells = Cells::empty(self.capacity);
         cells.count = count;
         cells.pr[..count].copy_from_slice(bytemuck::cast_slice(&pr));
-        cells.h[..count].copy_from_slice(bytemuck::cast_slice(&h));
+        let padded: &[[f32; 4]] = bytemuck::cast_slice(&h);
+        for (kept, read) in cells.h.iter_mut().zip(padded) {
+            *kept = [read[0], read[1], read[2]];
+        }
         cells.shape[..count].copy_from_slice(bytemuck::cast_slice(&shape));
         cells.pin[..count].copy_from_slice(bytemuck::cast_slice(&pin));
         cells.youth[..count].copy_from_slice(bytemuck::cast_slice(&youth));
@@ -582,8 +594,9 @@ impl GpuSim {
         let n = cells.count;
         self.queue
             .write_buffer(&self.pos[self.cur], 0, bytemuck::cast_slice(cells.alive()));
+        let padded: Vec<[f32; 4]> = cells.hormone().iter().map(|h| [h[0], h[1], h[2], 0.0]).collect();
         self.queue
-            .write_buffer(&self.hh[self.cur], 0, bytemuck::cast_slice(cells.hormone()));
+            .write_buffer(&self.hh[self.cur], 0, bytemuck::cast_slice(&padded));
         self.queue
             .write_buffer(&self.shape[self.cur], 0, bytemuck::cast_slice(cells.shapes()));
         self.queue
