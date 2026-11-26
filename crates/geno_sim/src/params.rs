@@ -80,7 +80,7 @@ pub struct Params {
     /// Restraint signal a cell of the skin makes per step, per unit of its volume, when it holds
     /// plenty of relay (the top cells of a shoot tip, told by the relay, make a small peptide,
     /// CLV3, that goes back down and switches the relay off; 0: none). A cell is skin as far as
-    /// its neighbours all lie on one side of it.
+    /// its neighbours all lie on one side of it (`rules::skin`: an inner cell makes none).
     pub restraint_made: f32,
     /// Same as `diffusion`, for the restraint signal.
     pub restraint_diffusion: f32,
@@ -228,9 +228,9 @@ impl Default for Params {
             relay_diffusion: 0.02,
             relay_decay: 0.01,
             relay_half: 1.0,
-            // BALANCE: sets the size of the shoot tip. Measured 2026-11-25: 1400 cells and still
-            // swelling at 0, 500 to 700 at 0.015, 200 to 450 here, 40 to 130 at 0.06.
-            restraint_made: 0.03,
+            // BALANCE: sets the size of the shoot tip. Measured 2026-11-26, the skin alone making
+            // it: 500 to 1000 cells at 0.03, 320 to 670 at 0.06, 140 to 310 here, no stem at 0.2.
+            restraint_made: 0.1,
             restraint_diffusion: 0.05,
             restraint_decay: 0.03,
             restraint_half: 1.0,

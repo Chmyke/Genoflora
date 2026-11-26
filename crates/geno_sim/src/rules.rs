@@ -109,8 +109,9 @@ pub fn heard(p: &Params, restraint: f32) -> f32 {
     p.restraint_half / (p.restraint_half + restraint)
 }
 
-/// How much a cell belongs to the skin, from 0 to 1: its neighbours all lie on one side of it.
-/// A cell surrounded evenly is inside; a lone cell, or the tip of a column, is all skin.
+/// Share of the walls of a cell that face no other cell, from 0 to 1: how far its neighbours lie
+/// on one side of it. It is what the cell touches of the soil around it. A cell surrounded evenly
+/// reads little (0.06 to 0.18 measured inside a stem), a flat side one half, a lone cell one.
 #[inline]
 pub fn exposed(g: &Gathered) -> f32 {
     if g.neighbours > 0.0 {
@@ -118,6 +119,22 @@ pub fn exposed(g: &Gathered) -> f32 {
     } else {
         1.0
     }
+}
+
+/// Whether a cell belongs to the skin, from 0 to 1: how much the directions of its neighbours
+/// agree beyond what chance gives. It is the mean cosine between two of them (1 when all lie the
+/// same way, 0 when they lie at random, below 0 when they are spread evenly), as a length.
+///
+/// WHY: not `exposed`. Being skin is an identity, not a share: measured 2026-11-26, the little
+/// that `exposed` reads inside, times the many inner cells, made two thirds of the restraint
+/// signal the skin alone was meant to make.
+#[inline]
+pub fn skin(g: &Gathered) -> f32 {
+    let n = g.neighbours;
+    if n < 2.0 {
+        return 1.0;
+    }
+    ((dot(&g.around, &g.around) - n) / (n * n - n)).max(0.0).sqrt()
 }
 
 /// New state of a cell once every neighbour has been gathered.
@@ -154,7 +171,7 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     // the relay is made.
     let cw = hi[3] / volume;
     let told = cw / (p.relay_half + cw);
-    let restraint = hi[2] + p.restraint_diffusion * g.spread[2] + p.restraint_made * told * exposed * volume
+    let restraint = hi[2] + p.restraint_diffusion * g.spread[2] + p.restraint_made * told * skin(g) * volume
         - p.restraint_decay * hi[2];
     let push = dot(&g.disp, &g.disp).sqrt();
     let held = (1.0 - p.soil_grip * soil * exposed / push.max(1e-12)).max(0.0);
@@ -537,6 +554,54 @@ mod tests {
         assert!(made(9.0, &[2.0]) > made(1.0, &[2.0]));
         assert_eq!(made(0.0, &[2.0]), 0.0);
         assert!(made(9.0, &[2.0, -2.0]) < 1e-9);
+    }
+
+    #[test]
+    fn a_cell_is_skin_only_as_far_as_its_neighbours_lie_on_one_side() {
+        let read = |dirs: &[[f32; 3]]| {
+            let mut g = Gathered::default();
+            for d in dirs {
+                let len = dot(d, d).sqrt();
+                for (sum, part) in g.around.iter_mut().zip(d) {
+                    *sum += part / len;
+                }
+                g.neighbours += 1.0;
+            }
+            (skin(&g), exposed(&g))
+        };
+        let six = [
+            [1.0, 0.0, 0.0],
+            [-1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, -1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, -1.0],
+        ];
+        assert_eq!(read(&[]), (1.0, 1.0));
+        assert_eq!(read(&six[..1]), (1.0, 1.0));
+        // Surrounded unevenly (one neighbour pushed aside): it touches a little of what lies
+        // around, yet it is no skin at all.
+        let mut uneven = six;
+        uneven[0] = [1.0, 0.6, 0.0];
+        let (inside, touching) = read(&uneven);
+        assert_eq!(inside, 0.0);
+        assert!(touching > 0.05 && touching < 0.15, "{touching}");
+        // Neighbours filling one half of the space: skin. All of them close to one direction
+        // (the tip of a column): more so.
+        let half = [
+            [-1.0, 0.0, 0.0],
+            [-1.0, 1.0, 0.0],
+            [-1.0, -1.0, 0.0],
+            [-1.0, 0.0, 1.0],
+            [-1.0, 0.0, -1.0],
+            [0.0, 1.0, 0.0],
+            [0.0, -1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, -1.0],
+        ];
+        let (flat, _) = read(&half);
+        let (tip, _) = read(&half[..5]);
+        assert!(flat > 0.2 && tip > 2.0 * flat && tip < 1.0, "{flat} {tip}");
     }
 
     #[test]

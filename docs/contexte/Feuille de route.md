@@ -721,7 +721,31 @@ interrupteur essayée plus haut durcissait la lecture d'un champ resté doux ; i
 lui-même qui se concentre. Défaut à corriger dans le même lot : le signal de retenue émis par
 l'intérieur.
 
-Prochaine étape : sur décision de Mickaël, ajouter cette cause (juge, test chiffré, carte), puis
+Décision de Mickaël (2026-11-26) : ajouter l'auto-entretien du relais, et corriger d'abord, seul,
+le signal de retenue émis par l'intérieur.
+
+La peau seule émet le signal de retenue (2026-11-26). « Être de la peau » a maintenant sa propre
+estimation (`rules::skin`) : à quel point les directions des voisines s'accordent au-delà de ce
+que donne le hasard (le cosinus moyen entre deux voisines). Elle vaut exactement zéro pour une
+cellule entourée, même inégalement, 0,1 à 0,3 sur un flanc, 1 au bout d'une colonne. Ce que la
+cellule touche de terre garde l'ancienne estimation (`rules::exposed`), choix de Claude : appliquée
+au sol, la nouvelle ne retenait plus la graine (déplacée de 3,0 contre 2,5 à l'air libre), et un
+dixième de prise à l'intérieur d'une racine ne fausse rien de mesuré.
+
+Mesuré (une graine, 30 000 pas) : le signal règle toujours la taille de façon graduée.
+
+| Signal de retenue | Pointe (cellules) | Tige à 30 000 pas |
+|---|---|---|
+| 0,03 (ancien réglage) | 500 à 1 000 | 116 de haut, 29 de large |
+| 0,06 | 320 à 670 | 119 de haut, 24 de large |
+| 0,1 (nouveau réglage de référence) | 140 à 310 | 98 de haut, 18 de large |
+| 0,2 | aucune tige | |
+
+Le contraste ne change pas (jeunes 0,52 à 0,53, autres 0,35), comme attendu : la correction ôte un
+défaut, elle n'est pas la cause manquante. La tige est un peu plus fine (18 de large contre 20 à
+24 au même âge).
+
+Prochaine étape : ajouter l'auto-entretien du relais (juge, test chiffré, carte), puis
 la juger au bilan (coupe en travers : relais fort dans l'axe, faible au flanc) et à la planche.
 Ensuite la silhouette trop épaisse (la pointe est aujourd'hui aussi large que la tige, sans doute
 la même cause), puis la fontaine inversée de la racine.

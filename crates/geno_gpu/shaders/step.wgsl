@@ -94,12 +94,17 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     let soil = soil_share(pi.xyz);
     var exposed = 1.0;
     if (neighbours > 0.0) { exposed = sqrt(dot(around, around)) / neighbours; }
+    // Skin, as an identity (mirrors rules::skin): inner cells read exactly none.
+    var skin = 1.0;
+    if (neighbours >= 2.0) {
+        skin = sqrt(max((dot(around, around) - neighbours) / (neighbours * neighbours - neighbours), 0.0));
+    }
     // Relay made where cytokinin calls, restraint signal made by the skin that holds relay.
     let reading = ck_push * (P.restraint_half / (P.restraint_half + hi.z / vi));
     let relay = hi.w + P.relay_diffusion * spread.w + P.relay_made * reading * vi - P.relay_decay * hi.w;
     let cw = hi.w / vi;
     let told = cw / (P.relay_half + cw);
-    let restraint = hi.z + P.restraint_diffusion * spread.z + P.restraint_made * told * exposed * vi - P.restraint_decay * hi.z;
+    let restraint = hi.z + P.restraint_diffusion * spread.z + P.restraint_made * told * skin * vi - P.restraint_decay * hi.z;
     hh_out[i] = vec4<f32>(auxin, cytokinin, restraint, relay);
     let held = max(1.0 - P.soil_grip * soil * exposed / max(sqrt(dot(disp, disp)), 1e-12), 0.0);
     let free = max(1.0 - P.squeeze_hold * squeeze / pi.w, 0.0);

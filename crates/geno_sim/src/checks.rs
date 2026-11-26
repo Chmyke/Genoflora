@@ -198,7 +198,7 @@ pub struct Layer {
     pub youth: f32,
     /// Light received at the last step.
     pub light: f32,
-    /// How much they belong to the skin (`rules::exposed`).
+    /// How much they belong to the skin (`rules::skin`).
     pub skin: f32,
     /// Concentrations.
     pub auxin: f32,
@@ -223,7 +223,7 @@ fn cut(c: &Cells, p: &Params, layers: usize, layer_of: impl Fn(&[f32; 4]) -> Opt
         layer.cells += 1;
         layer.youth += c.youth[i];
         layer.light += c.pin[i][3];
-        layer.skin += crate::rules::exposed(&gathered(c, p, i));
+        layer.skin += crate::rules::skin(&gathered(c, p, i));
         layer.auxin += auxin;
         layer.cytokinin += cytokinin;
         layer.restraint += restraint;
