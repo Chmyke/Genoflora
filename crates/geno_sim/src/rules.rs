@@ -241,9 +241,10 @@ fn polarise(me: &Cell, g: &Gathered, p: &Params, auxin: f32) -> [f32; 4] {
     // What the neighbours hold on average, taken out of the sum as far as the cell reads fairly:
     // what is left is how they differ, which even neighbours do not.
     let even = p.pin_fair * g.richness / g.neighbours.max(1.0);
-    let t = [0, 1, 2].map(|k| {
-        uphill * (g.richer[k] + even * g.around[k]) + along * g.flux[k] + p.gravisense * p.gravity[k]
-    });
+    // The skin holds no heavy grains: as far as a cell is skin, it senses gravity less.
+    let down = p.gravisense * (1.0 - p.grav_skin * skin(g)).max(0.0);
+    let t = [0, 1, 2]
+        .map(|k| uphill * (g.richer[k] + even * g.around[k]) + along * g.flux[k] + down * p.gravity[k]);
     let n = [0, 1, 2].map(|k| q[k] + p.pin_rate * (t[k] - q[k]));
     let len = dot(&n, &n).sqrt();
     let keep = if len > 1.0 { 1.0 / len } else { 1.0 };
@@ -437,6 +438,36 @@ mod tests {
         };
         let q = pumps_after(&fair, 0.01, &uneven, 2000);
         assert!(q[1] > 0.1, "{q:?}");
+    }
+
+    #[test]
+    fn a_skin_cell_that_holds_no_heavy_grains_is_not_pulled_down() {
+        // Four neighbours on one side: fully skin. Reading them fairly, they pull the pumps nowhere.
+        let skin_cell = Gathered {
+            around: [4.0, 0.0, 0.0],
+            neighbours: 4.0,
+            ..Gathered::default()
+        };
+        assert!((skin(&skin_cell) - 1.0).abs() < 1e-6);
+        let p = Params {
+            pin_fair: 1.0,
+            ..Params::default()
+        };
+        let q = pumps_after(&p, 1.0, &skin_cell, 1000);
+        assert!(
+            (q[1] + p.gravisense).abs() < 0.01,
+            "every cell senses gravity: {q:?}"
+        );
+        let numb = Params { grav_skin: 5.0, ..p };
+        let q = pumps_after(&numb, 1.0, &skin_cell, 1000);
+        assert!(q[1].abs() < 1e-6, "the skin does not: {q:?}");
+        // An inner cell, with neighbours all around it, still does.
+        let inner = Gathered {
+            neighbours: 6.0,
+            ..Gathered::default()
+        };
+        let q = pumps_after(&numb, 1.0, &inner, 1000);
+        assert!((q[1] + p.gravisense).abs() < 0.01, "{q:?}");
     }
 
     #[test]

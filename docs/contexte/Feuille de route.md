@@ -1081,3 +1081,34 @@ le bas. Dans le réel, seules les cellules à statolithes la sentent (la coiffe 
 racine) ; la descente par le centre vient du flux lui-même (canalisation), et la peau, qui n'a pas
 de statolithes, pompe vers le haut. La gravité imposée à toutes les cellules est ce qui interdit
 le retour. Cause à choisir avec Mickaël.
+
+Décision de Mickaël (2026-11-26) : essayer « la peau ne sent pas la gravité » (vrai dans la
+nature : l'épiderme n'a pas de statolithes). Prototype dans le juge, éteint par défaut :
+`grav_skin` (part du sens de la gravité qu'une cellule perd à mesure qu'elle est peau ; à 5, une
+cellule peau à 0,2 ou plus n'en sent plus). Test :
+`a_skin_cell_that_holds_no_heavy_grains_is_not_pulled_down`. Sonde du juge :
+`cargo run --release -p geno_sim --example root -- <pas> [capacity=…] [paramètre=valeur]`
+(30 s pour 3000 cellules) ; la lecture des pompes est commune au juge et à la carte
+(`checks::pumps_across`). Le juge à 3000 cellules redonne l'entonnoir de la carte.
+
+Pompes vers le haut (1 : droit vers le haut, -1 : droit vers le bas), de l'axe au bord :
+
+| Hauteur au-dessus du bout | Référence | `grav_skin=5` |
+|---|---|---|
+| 1 | -0,47 … -0,19 | -0,46 à l'axe, +0,04 à +0,19 dans les trois couches du bord |
+| 4 | -0,38 … -0,26 | -0,81 à l'axe, +0,18 et +0,27 au bord |
+| 8 | -0,66 … -0,32 | -0,75 à l'axe, +0,18 au bord, et pompes tournées vers l'intérieur (-0,2) |
+
+Verdict : la circulation en fontaine inversée émerge, sans rien dire d'autre aux cellules :
+descente renforcée par le centre, remontée par la peau, retour vers l'intérieur plus haut. Elle
+tient aussi avec `polar=0.2` et `flux_half=0.003`.
+
+Ce qu'elle ne donne pas (encore) : le maximum d'auxine n'est pas resserré au centre, il forme un
+anneau au bord (à 4 du bout : 3,4 à l'axe contre 10 au bord), et la jeunesse suit (0,58 à l'axe,
+0,75 au bord). La racine du juge n'est pas plus profonde (20 contre 23 au même effectif). À noter
+aussi, correction d'une lecture ancienne : dans une vraie racine la zone qui se divise occupe
+toute la largeur de la pointe ; seul le maximum d'auxine (centre quiescent) est étroit. Une pointe
+jeune aussi large que la racine n'est donc pas en soi un écart au réel.
+
+Reste à décider : porter `grav_skin` sur la carte pour juger à la planche à 16 000 cellules.
+`pin_fair` et `grav_skin` sont dans le juge seulement ; à 0 ils ne changent rien.

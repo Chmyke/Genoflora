@@ -276,6 +276,64 @@ pub fn across(c: &Cells, p: &Params, top: [f32; 3], depth: f32, thick: f32, laye
     })
 }
 
+/// One layer of an organ cut across: how young its cells are, how much auxin they hold, and
+/// which way their auxin pumps point.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Flow {
+    pub cells: usize,
+    pub youth: f32,
+    /// Concentration.
+    pub auxin: f32,
+    /// Pumps against gravity: 1 straight up, -1 straight down.
+    pub up: f32,
+    /// Pumps away from the axis of the organ: -1 straight toward it.
+    pub out: f32,
+}
+
+/// The pumps across an organ, `above` its lower end `tip` (against gravity), from its axis
+/// outward, one dividing radius per layer: the cells of a slab `thick` thick. A reverse fountain
+/// (Grieneisen et al. 2007) shows as pumps pointing down at the axis and up in the outer layers.
+pub fn pumps_across(
+    c: &Cells,
+    p: &Params,
+    tip: [f32; 3],
+    above: f32,
+    thick: f32,
+    layers: usize,
+) -> Vec<Flow> {
+    let height = |q: &[f32; 4]| -> f32 { -(0..3).map(|k| (q[k] - tip[k]) * p.gravity[k]).sum::<f32>() };
+    let slab: Vec<usize> = (0..c.count)
+        .filter(|&i| (height(&c.pr[i]) - above).abs() <= 0.5 * thick)
+        .collect();
+    let n = slab.len().max(1) as f32;
+    let centre = [0, 1, 2].map(|k| slab.iter().map(|&i| c.pr[i][k]).sum::<f32>() / n);
+    let mut out = vec![Flow::default(); layers];
+    for &i in &slab {
+        let q = &c.pr[i];
+        let d = [q[0] - centre[0], q[1] - centre[1], q[2] - centre[2]];
+        let along: f32 = (0..3).map(|k| d[k] * p.gravity[k]).sum();
+        let aside = [0, 1, 2].map(|k| d[k] - along * p.gravity[k]);
+        let far = aside.iter().map(|a| a * a).sum::<f32>().sqrt();
+        let Some(layer) = out.get_mut((far / p.r_div) as usize) else {
+            continue;
+        };
+        let pin = &c.pin[i];
+        layer.cells += 1;
+        layer.youth += c.youth[i];
+        layer.auxin += c.h[i][crate::cells::AUXIN] / (q[3] * q[3] * q[3]);
+        layer.up -= (0..3).map(|k| pin[k] * p.gravity[k]).sum::<f32>();
+        layer.out += (0..3).map(|k| pin[k] * aside[k]).sum::<f32>() / far.max(1e-6);
+    }
+    for layer in &mut out {
+        let n = layer.cells.max(1) as f32;
+        layer.youth /= n;
+        layer.auxin /= n;
+        layer.up /= n;
+        layer.out /= n;
+    }
+    out
+}
+
 /// Share of the pairs of neighbours of `before` that are still neighbours in `after`, among the
 /// cells that `keep` retains in both (a cell keeps its index for life). The cells of a plant are
 /// glued by their walls and never change neighbours: 1. Cells that slide past each other like a

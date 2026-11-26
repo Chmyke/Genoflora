@@ -51,6 +51,11 @@ pub struct Params {
     /// How far the heavy grains settled on the lower side of a cell pull its pumps down (0: the
     /// cell does not sense gravity).
     pub gravisense: f32,
+    /// How much of its sense of gravity a cell of the skin loses, per unit of how much it is skin
+    /// (`rules::skin`, 0.2 to 0.6 on a real skin): 0, every cell senses gravity alike; 5, a cell
+    /// that is skin by 0.2 or more senses none. The skin of a plant holds no heavy grains.
+    /// PROTOTYPE (judge only, 2026-11-26): not in the shaders, keep at 0 on the card.
+    pub grav_skin: f32,
     /// Auxin every cell makes per step, per unit of its volume, in the dark.
     pub production: f32,
     /// Auxin a cell makes on top of that, per step, per unit of its volume, in full light (light
@@ -169,6 +174,7 @@ impl Params {
             "pin_fair" => &mut self.pin_fair,
             "flux_half" => &mut self.flux_half,
             "gravisense" => &mut self.gravisense,
+            "grav_skin" => &mut self.grav_skin,
             "production" => &mut self.production,
             "light_production" => &mut self.light_production,
             "decay" => &mut self.decay,
@@ -225,6 +231,7 @@ impl Default for Params {
             pin_fair: 0.0,
             flux_half: 0.01,
             gravisense: 0.3,
+            grav_skin: 0.0,
             production: 0.001,
             light_production: 0.03,
             decay: 0.001,

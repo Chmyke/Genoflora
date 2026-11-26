@@ -19,7 +19,7 @@
 
 use geno_gpu::{Adapter, GpuSim};
 use geno_sim::checks::{
-    Layer, across, foci, kept_neighbours, length_over_width, long_axis, profile, run, under,
+    Layer, across, foci, kept_neighbours, length_over_width, long_axis, profile, pumps_across, run, under,
 };
 use geno_sim::{Cells, Engine, Params};
 
@@ -168,7 +168,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(q) = tip.filter(|_| every_profile || shot == shots || full) {
             for above in [ROOT_NEAR, ROOT_MID, ROOT_FAR, 0.5 * depth] {
                 println!("  across the root {above:.0} above its tip, from its axis outward");
-                print_root_cut(&cells, &p, q[1] + above);
+                print_root_cut(&cells, &p, [q[0], q[1], q[2]], above);
             }
         }
         if full {
@@ -183,43 +183,15 @@ const ROOT_NEAR: f32 = 1.0;
 const ROOT_MID: f32 = 4.0;
 const ROOT_FAR: f32 = 10.0;
 
-/// The root across, at height `at`: the cells of a slab, sorted by their distance to its centre,
-/// one dividing radius per layer. For each layer: how young, how much auxin, and which way the
-/// auxin pumps point, upward (against gravity, 1: straight up, -1: straight down) and outward
-/// (away from the axis, -1: straight toward it). A reverse fountain shows as pumps pointing down
-/// at the axis, up in the outer layers, and inward in between.
-fn print_root_cut(cells: &Cells, p: &Params, at: f32) {
-    let slab: Vec<usize> = (0..cells.count)
-        .filter(|&i| (cells.pr[i][1] - at).abs() <= 0.5 * ACROSS_THICK)
-        .collect();
-    let n = slab.len().max(1) as f32;
-    let mid = [0, 2].map(|k| slab.iter().map(|&i| cells.pr[i][k]).sum::<f32>() / n);
+/// Prints the root across, `above` its tip: see `checks::pumps_across`.
+fn print_root_cut(cells: &Cells, p: &Params, tip: [f32; 3], above: f32) {
     println!("  layer cells youth auxin pumps_up pumps_out");
-    for layer in 0..ACROSS_LAYERS {
-        let (mut count, mut youth, mut auxin, mut up, mut out) = (0.0_f32, 0.0, 0.0, 0.0, 0.0);
-        for &i in &slab {
-            let q = &cells.pr[i];
-            let aside = [q[0] - mid[0], q[2] - mid[1]];
-            let far = (aside[0] * aside[0] + aside[1] * aside[1]).sqrt();
-            if (far / p.r_div) as usize != layer {
-                continue;
-            }
-            let pin = &cells.pin[i];
-            count += 1.0;
-            youth += cells.youth[i];
-            auxin += cells.h[i][0] / (q[3] * q[3] * q[3]);
-            up -= (0..3).map(|k| pin[k] * p.gravity[k]).sum::<f32>();
-            out += (pin[0] * aside[0] + pin[2] * aside[1]) / far.max(1e-6);
-        }
-        if count > 0.0 {
-            println!(
-                "  {layer:>5} {count:>5.0} {:>5.2} {:>5.2} {:>8.2} {:>9.2}",
-                youth / count,
-                auxin / count,
-                up / count,
-                out / count
-            );
-        }
+    let cut = pumps_across(cells, p, tip, above, ACROSS_THICK, ACROSS_LAYERS);
+    for (layer, f) in cut.iter().enumerate().filter(|(_, f)| f.cells > 0) {
+        println!(
+            "  {layer:>5} {:>5} {:>5.2} {:>5.2} {:>8.2} {:>9.2}",
+            f.cells, f.youth, f.auxin, f.up, f.out
+        );
     }
 }
 
