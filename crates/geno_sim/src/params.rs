@@ -40,6 +40,12 @@ pub struct Params {
     /// Auxin concentration at which a cell weighs both ways of placing its pumps equally: below,
     /// mostly toward the richer neighbours; above, mostly along the auxin flowing through it.
     pub pin_switch: f32,
+    /// How fairly a cell reads which of its neighbours are richer, from 0 to 1. At 0 it adds up
+    /// what its neighbours hold, so a cell of the skin, with neighbours on one side only, pumps
+    /// inward even when they all hold the same. At 1 it reads only how they differ from one
+    /// another (a gradient), so even neighbours pull its pumps nowhere.
+    /// PROTOTYPE (judge only, 2026-11-26): not in the shaders, keep at 0 on the card.
+    pub pin_fair: f32,
     /// Auxin flow through a cell at which its pumps follow the flow half as much as they can.
     pub flux_half: f32,
     /// How far the heavy grains settled on the lower side of a cell pull its pumps down (0: the
@@ -160,6 +166,7 @@ impl Params {
             "polar" => &mut self.polar,
             "pin_rate" => &mut self.pin_rate,
             "pin_switch" => &mut self.pin_switch,
+            "pin_fair" => &mut self.pin_fair,
             "flux_half" => &mut self.flux_half,
             "gravisense" => &mut self.gravisense,
             "production" => &mut self.production,
@@ -215,6 +222,7 @@ impl Default for Params {
             polar: 0.1,
             pin_rate: 0.01,
             pin_switch: 1.0,
+            pin_fair: 0.0,
             flux_half: 0.01,
             gravisense: 0.3,
             production: 0.001,

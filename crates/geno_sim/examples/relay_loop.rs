@@ -10,12 +10,14 @@
 //! `start` is the relay concentration every cell holds at first (to see whether the outcome
 //! depends on where the loop starts from).
 
-use geno_sim::cells::RELAY;
+use geno_sim::cells::{AUXIN, RELAY};
 use geno_sim::checks::{Layer, across, under};
 use geno_sim::{Cells, Engine, Params, Reference};
 
 /// Steps the cells are left to settle against each other before the tissue is frozen.
 const SETTLING_STEPS: u32 = 300;
+/// Light above which a cell counts as lit skin.
+const LIT: f32 = 0.1;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
@@ -104,6 +106,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         cells.count,
         if dome { "rounded top" } else { "flat top" }
     );
+    // Whether auxin gathers in spots on the lit skin: its mean, its unevenness (standard deviation
+    // over mean) and its peak there, against its mean in the cells light does not reach.
+    let auxin = |i: usize| cells.h[i][AUXIN] / (r * r * r);
+    let lit: Vec<f32> = (0..cells.count)
+        .filter(|&i| cells.pin[i][3] > LIT)
+        .map(auxin)
+        .collect();
+    let dark: Vec<f32> = (0..cells.count)
+        .filter(|&i| cells.pin[i][3] <= LIT)
+        .map(auxin)
+        .collect();
+    let mean = |v: &[f32]| v.iter().sum::<f32>() / v.len().max(1) as f32;
+    let spread = (lit.iter().map(|a| (a - mean(&lit)).powi(2)).sum::<f32>() / lit.len().max(1) as f32).sqrt();
+    println!(
+        "auxin on the {} lit cells: mean {:.3}, unevenness {:.2}, peak {:.3}; in the dark: mean {:.3}",
+        lit.len(),
+        mean(&lit),
+        spread / mean(&lit).max(1e-9),
+        lit.iter().copied().fold(0.0, f32::max),
+        mean(&dark)
+    );
     println!("under the summit, going down");
     print_layers(&under(&cells, &p, top, 0.5 * pitch, height as usize));
     for depth in [1, 4, 8] {
@@ -124,11 +147,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn print_layers(layers: &[Layer]) {
-    println!("  layer cells light skin cytokinin restraint relay making");
+    println!("  layer cells light skin youth auxin cytokinin restraint relay making");
     for (n, l) in layers.iter().enumerate().filter(|(_, l)| l.cells > 0) {
         println!(
-            "  {n:>5} {:>5} {:>5.2} {:>4.2} {:>9.3} {:>9.3} {:>5.2} {:>6.3}",
-            l.cells, l.light, l.skin, l.cytokinin, l.restraint, l.relay, l.making
+            "  {n:>5} {:>5} {:>5.2} {:>4.2} {:>5.2} {:>5.2} {:>9.3} {:>9.3} {:>5.2} {:>6.3}",
+            l.cells, l.light, l.skin, l.youth, l.auxin, l.cytokinin, l.restraint, l.relay, l.making
         );
     }
 }

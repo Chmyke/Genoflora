@@ -238,7 +238,12 @@ fn polarise(me: &Cell, g: &Gathered, p: &Params, auxin: f32) -> [f32; 4] {
     let strength = dot(&g.flux, &g.flux).sqrt();
     let along = follow / (p.flux_half + strength);
     let q = &me.pin;
-    let t = [0, 1, 2].map(|k| uphill * g.richer[k] + along * g.flux[k] + p.gravisense * p.gravity[k]);
+    // What the neighbours hold on average, taken out of the sum as far as the cell reads fairly:
+    // what is left is how they differ, which even neighbours do not.
+    let even = p.pin_fair * g.richness / g.neighbours.max(1.0);
+    let t = [0, 1, 2].map(|k| {
+        uphill * (g.richer[k] + even * g.around[k]) + along * g.flux[k] + p.gravisense * p.gravity[k]
+    });
     let n = [0, 1, 2].map(|k| q[k] + p.pin_rate * (t[k] - q[k]));
     let len = dot(&n, &n).sqrt();
     let keep = if len > 1.0 { 1.0 / len } else { 1.0 };
@@ -403,6 +408,35 @@ mod tests {
         // Rich in auxin, the same cell follows the flow instead.
         let q = pumps_after(&p, 100.0, &g, 2000);
         assert!(q[2] > 0.9 && q[2] > 10.0 * q[0].abs(), "{q:?}");
+    }
+
+    #[test]
+    fn a_skin_cell_reading_fairly_does_not_pump_toward_neighbours_that_hold_the_same() {
+        // Three neighbours on the -x side only, each holding 2: nothing to tell them apart.
+        let g = Gathered {
+            richer: [-6.0, 0.0, 0.0],
+            richness: 6.0,
+            around: [3.0, 0.0, 0.0],
+            neighbours: 3.0,
+            ..Gathered::default()
+        };
+        let p = Params {
+            gravisense: 0.0,
+            ..Params::default()
+        };
+        let q = pumps_after(&p, 0.01, &g, 2000);
+        assert!(q[0] < -0.9, "adding up, the pumps go inward: {q:?}");
+        let fair = Params { pin_fair: 1.0, ..p };
+        let q = pumps_after(&fair, 0.01, &g, 2000);
+        assert!(q[0].abs() < 1e-4, "reading fairly, they go nowhere: {q:?}");
+        // A richer neighbour still pulls them: one of the three holds 4 instead of 2.
+        let uneven = Gathered {
+            richer: [-6.0, 2.0, 0.0],
+            richness: 8.0,
+            ..g
+        };
+        let q = pumps_after(&fair, 0.01, &uneven, 2000);
+        assert!(q[1] > 0.1, "{q:?}");
     }
 
     #[test]

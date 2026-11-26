@@ -1021,3 +1021,34 @@ Conséquence : la largeur de la pointe ne viendra pas de cette boucle. Elle doit
 une peau qui garde son auxine, une auxine qui ne garde jeune qu'à la dose d'un bout de racine, et
 un relais qui porte seul la pointe. Le bloc figé sert de banc d'essai rapide pour ce réglage
 (y remettre l'auxine : `light_production`, `production`).
+
+### Le flanc sur le dôme figé : la peau peut garder son auxine, mais rien ne distingue le flanc (2026-11-26)
+
+Même sonde `relay_loop`, avec `dome=1`, l'auxine remise (`production=0.001 light_production=0.03`)
+et deux colonnes de plus (jeunesse, auxine), plus une ligne sur l'auxine de la peau éclairée. Le
+dôme figé redonne la plante : peau à 0,07 à 0,11 d'auxine contre 0,2 à l'intérieur.
+
+Cause trouvée de la fuite : une cellule place ses pompes « vers les voisines les plus riches » en
+additionnant ce que tiennent ses voisines. Une cellule de peau n'a de voisines que d'un côté, donc
+elle pompe vers l'intérieur même quand elles tiennent toutes la même chose. Prototype dans le juge,
+éteint par défaut : `pin_fair` (0 à 1) fait lire seulement les écarts entre voisines (un vrai
+gradient). Test : `a_skin_cell_reading_fairly_does_not_pump_toward_neighbours_that_hold_the_same`.
+
+| Réglage (dôme de rayon 6, 6000 pas) | Auxine peau du flanc | Auxine au centre | Relais centre / flanc à 1 sous le sommet |
+|---|---|---|---|
+| `pin_fair=0` (actuel) | 0,06 à 0,11 | 0,2 | 2,04 / 1,82 |
+| `pin_fair=1` | 0,22 à 0,25 | 0,19 | 1,99 / 1,74 |
+| `pin_fair=1 gravisense=0.03` | 0,42 | 0,37 | 1,59 / 1,40 |
+
+Verdict : la peau garde son auxine avec la lecture équitable, mais l'auxine reste plate en travers
+et le relais aussi. Rien ne fait du flanc un endroit à part : la gravité des pompes domine
+partout et emporte tout vers le bas. La baisse de la zone jeune vue à `gravisense=0.03` (271
+cellules contre 511) est un artefact du banc : la colonne est fermée en bas, l'auxine s'y entasse
+et remonte ; elle raccourcit la zone jeune, elle ne l'amincit pas.
+
+Ce que cela désigne : dans le réel, le flanc devient un endroit à part parce que l'auxine s'y
+rassemble en taches dans la peau (les pompes de la peau se tournent les unes vers les autres),
+et chaque tache est le départ d'un organe. La sortie du flanc, c'est donc la naissance des
+feuilles : un chantier entier, pas un réglage. Briques déjà là : le banc figé et `pin_fair`.
+Limites du banc à lever avant : lui donner un puits en bas (une racine qui boit l'auxine), et
+mesurer l'auxine cellule par cellule sur la peau, pas par couche.
