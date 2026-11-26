@@ -937,3 +937,28 @@ niveau du relais, pas l'étendue de la zone jeune. Dans le réel, la largeur du 
 par cette boucle seule (Gruel 2016 : le domaine s'élargit avec le dôme) : les cellules du flanc
 quittent la pointe, là où l'auxine s'accumule dans la peau. Ici, aucune auxine ne marque le flanc.
 La cause à ajouter reste à choisir avec Mickaël.
+
+Décision de Mickaël (2026-11-26) : la cause à ajouter est la sortie du flanc par l'auxine. Avant
+toute règle, quatre essais par les réglages seuls (pas 18000, coupe à 4 sous le sommet) :
+
+| Essai | Auxine au centre | Auxine sur la peau | Calotte | Largeur |
+|---|---|---|---|---|
+| Référence (auto-entretien) | 0,16 | 0,11 | 722 | 14 |
+| Sans gravité des pompes (`gravisense=0`) | 1,4 | 1,4 | 4293 | 27 |
+| Sans pompes (`polar=0`) | 1,7 | 1,9 | 3785 | 27 |
+| Pompes vers le plus riche seulement (`pin_switch=1000 gravisense=0`) | 0,84 | 0,3 | 2085 | 19 |
+| Dix fois plus d'auxine à la lumière (`light_production=0.3`) | 0,8 | 1,2 | 1504 | 21 |
+
+Deux obstacles, mesurés :
+
+1. La peau de la pointe ne garde pas son auxine. Elle la fabrique à la lumière, mais les pompes
+   l'envoient vers l'intérieur puis vers le bas (une cellule de peau n'a de voisines que d'un côté,
+   donc « vers les voisines les plus riches » pointe vers l'intérieur). Dans le réel, la peau
+   retient l'auxine (transporteurs d'entrée AUX1/LAX de l'épiderme, Reinhardt 2003, Bainbridge 2008).
+2. Quand l'auxine est là, elle fait l'inverse de ce qu'il faut : plus d'auxine donne une calotte
+   plus grosse, parce que dans le modèle l'auxine garde jeune partout (la logique de la racine,
+   `youth_half`). Dans le réel les rôles s'échangent : en pointe de tige l'auxine fait quitter
+   l'état jeune (organes), et le relais (WUS) y émousse la réponse à l'auxine (Ma et al. 2019).
+   Une cellule doit donc savoir si elle est de tige ou de racine, ce que rien ne porte aujourd'hui.
+
+Aucune règle ajoutée : le second point touche à l'état d'une cellule, il se décide avec Mickaël.
