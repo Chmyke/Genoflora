@@ -97,6 +97,29 @@ pub fn interact(me: &Cell, other: &Cell, p: &Params, g: &mut Gathered) {
     g.flux[2] += sent * u[2];
 }
 
+/// How strongly cytokinin calls in a cell, from 0 to 1: it holds cytokinin while auxin is scarce.
+#[inline]
+pub fn ck_call(p: &Params, auxin: f32, cytokinin: f32) -> f32 {
+    (cytokinin / (p.ck_half + cytokinin)) * (p.ck_block / (p.ck_block + auxin))
+}
+
+/// Share of the cytokinin call a cell still hears through the restraint signal it holds.
+#[inline]
+pub fn heard(p: &Params, restraint: f32) -> f32 {
+    p.restraint_half / (p.restraint_half + restraint)
+}
+
+/// How much a cell belongs to the skin, from 0 to 1: its neighbours all lie on one side of it.
+/// A cell surrounded evenly is inside; a lone cell, or the tip of a column, is all skin.
+#[inline]
+pub fn exposed(g: &Gathered) -> f32 {
+    if g.neighbours > 0.0 {
+        dot(&g.around, &g.around).sqrt() / g.neighbours
+    } else {
+        1.0
+    }
+}
+
 /// New state of a cell once every neighbour has been gathered.
 #[inline]
 pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
@@ -114,21 +137,17 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     // Even growth, up to the dividing size: holding a lot of auxin, or holding cytokinin while
     // auxin is scarce.
     let (ca, cc) = (hi[0] / volume, hi[1] / volume);
-    let ck_push = (cc / (p.ck_half + cc)) * (p.ck_block / (p.ck_block + ca));
+    let ck_push = ck_call(p, ca, cc);
     let drive = ca / (p.half_sat + ca) + ck_push;
     // The soil holds the cell and pushes back on it, but only through the walls that press on soil
     // rather than on other cells: a cell surrounded evenly touches no soil, a lone cell or the tip
     // of a column does. Held everywhere, the cells inside a root could not make room for their
     // growth and piled up (measured 2026-11-25: 40 neighbours, overlaps deeper than a radius).
     let soil = soil::share(p, pi);
-    let exposed = if g.neighbours > 0.0 {
-        dot(&g.around, &g.around).sqrt() / g.neighbours
-    } else {
-        1.0
-    };
+    let exposed = exposed(g);
     // Cytokinin does not keep a cell young by itself: where it calls, the cell makes a relay that
     // passes from cell to cell, and the relay does. The restraint signal dulls that call.
-    let reading = ck_push * (p.restraint_half / (p.restraint_half + hi[2] / volume));
+    let reading = ck_push * heard(p, hi[2] / volume);
     let relay =
         hi[3] + p.relay_diffusion * g.spread[3] + p.relay_made * reading * volume - p.relay_decay * hi[3];
     // A cell of the skin that holds relay makes the restraint signal, which goes back to where

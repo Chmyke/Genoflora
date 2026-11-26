@@ -37,6 +37,17 @@ profondeur fixe sous la peau, et son domaine s'élargit quand le dôme s'élargi
 ET la proximité de la surface. Réserve des auteurs : la cytokinine n'a jamais été mesurée dans le
 méristème, le répresseur est hypothétique.
 
+**WUS entretient sa propre fabrication (ajout du 2026-11-26).** WUS éteint directement les gènes
+ARR de type A (ARR5, 6, 7, 15), qui freinent la réponse à la cytokinine : une cellule qui tient du
+WUS entend mieux la cytokinine (Leibfried et al. 2005, Nature [R],
+https://doi.org/10.1038/nature04270). Cytokinine et WUS se renforcent par plusieurs boucles, ce
+qui change un signal de cytokinine en dégradé en un domaine WUS à bords nets (Gordon et al. 2009,
+PNAS [R], https://doi.org/10.1073/pnas.0908122106). Chickarmane et al. 2012 [R] ajoutent un frein :
+WUS réduit la fabrication de cytokinine par l'épiderme. La boucle WUS / CLV3 a été modélisée comme
+un système de réaction-diffusion qui donne une tache de taille propre (Fujita et al. 2011, PLoS
+ONE [R], https://doi.org/10.1371/journal.pone.0018243 ; qui est l'activateur et qui l'inhibiteur
+dans leur modèle : non lu).
+
 **Pourquoi CLV3 ne s'allume pas là où WUS est le plus fort.** Deux explications concurrentes : HAM,
 présent en profondeur, empêche WUS d'activer CLV3 (Zhou 2018, Science [R] ; Gruel 2018 [L],
 https://doi.org/10.1038/s41540-018-0072-1) ; ou bien WUS active à faible dose et réprime à forte
@@ -165,7 +176,9 @@ Causes manquantes, par ordre de proximité avec les prochaines étapes :
 1. **Taille de la pointe de tige.** Un signal de retenue seul ne suffit dans aucun modèle publié :
    il faut un repère de surface (deux portées) et un relais qui monte (WUS mobile). Le signal
    unique validé le 2026-11-25 est donc à mesurer d'abord pour ce qu'il donne ; si le centre du
-   foyer mûrit avant ses bords, la cause manquante sera ce relais.
+   foyer mûrit avant ses bords, la cause manquante sera ce relais. Mesuré le 2026-11-26, relais
+   et repère en place : le relais reste un dégradé sans endroit. Cause désignée : il n'entretient
+   pas sa propre fabrication (Leibfried 2005, Gordon 2009, section 2).
 2. **Maximum étroit de la racine.** Les modèles l'obtiennent en imposant le sens des pompes par
    tissu. Sans identité de tissu, deux pistes locales : une couche externe qui se reconnaît (une
    cellule sait qu'elle touche le sol) et pompe vers le haut ; un facteur lent et stable de type

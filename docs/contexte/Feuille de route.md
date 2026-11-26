@@ -617,7 +617,8 @@ elle-même les problèmes, le but étant une plante visuellement convaincante) :
   [profile=1] [paramètre=valeur]`. Une ligne par relevé : hauteur et largeur de la tige,
   profondeur et largeur de la racine, nombre de foyers jeunes à l'air, taille du plus gros et du
   plus haut, écart du plus haut à l'axe, jeunesse moyenne des cellules jeunes et des autres ;
-  puis le profil du centre au bord du foyer le plus haut (mesure `checks::profile`).
+  puis le profil du centre au bord du foyer le plus haut (mesure `checks::profile`), la coupe
+  sous le sommet et trois coupes en travers de la tige (`checks::under`, `checks::across`).
 - La vue 3D et `--capture` acceptent aussi les paramètres du génome par leur nom.
 
 Ce que la première planche a montré, et que les chiffres seuls cachaient (plante de référence,
@@ -659,9 +660,68 @@ ajoutée. Ce que ces mesures désignent : le champ de relais est un dégradé do
 largeur de la tige, sans rien qui sépare en profondeur l'endroit où il est fabriqué (sous la
 peau, dans le réel) de l'endroit où il agit (au sommet).
 
-Prochaine étape : avant toute règle, ajouter au bilan le profil en profondeur sous le sommet et
-en travers de la tige (cytokinine, relais, signal de retenue, jeunesse), le comparer à ce que
-décrit Gruel 2016 (relais absent de la peau, fabriqué dans une bande à profondeur fixe), et
-proposer à Mickaël la cause que l'écart désigne. Ensuite la silhouette trop épaisse, puis la
-fontaine inversée de la racine. Chaque cause se juge à la planche et au bilan, pas seulement au
-test.
+Profils sous le sommet et en travers de la tige, mesurés (2026-11-26). La sonde `report` imprime
+maintenant, couche par couche (une couche = un rayon de division), la coupe sous la cellule la
+plus haute et trois coupes en travers de la tige (à 4 et 12 sous le sommet, et à mi-hauteur), de
+l'axe vers le bord : jeunesse, lumière reçue, appartenance à la peau, auxine, cytokinine, signal
+de retenue, relais, et la fabrication du relais (part de son maximum), pour séparer l'endroit où
+il est fait de celui où il se trouve. Mesures `checks::under` et `checks::across`.
+
+Plante de référence à 16 500 cellules (tige de 86 de haut), sous le sommet :
+
+| Profondeur | Cytokinine | Fabrication du relais | Relais | Signal de retenue | Jeunesse |
+|---|---|---|---|---|---|
+| 0 (la peau) | 3,1 | 0,61 | 0,90 | 0,135 | 0,51 |
+| 4 | 1,4 | 0,47 | 0,83 | 0,080 | 0,50 |
+| 10 | 0,6 | 0,29 | 0,65 | 0,052 | 0,47 |
+| 23 | 0,25 | 0,15 | 0,38 | 0,035 | 0,38 |
+| mi-hauteur (43) | 0,14 | 0,09 | 0,22 | 0,023 | 0,27 |
+
+En travers, à 4 sous le sommet, la tige a déjà un rayon de 10 et tout y est plat de l'axe au
+bord : relais 0,84 à 0,85, jeunesse 0,48 à 0,52.
+
+Écart avec Gruel 2016 (relais absent de la peau, fabriqué dans une bande à profondeur fixe, dans
+un petit domaine) :
+
+- Le relais est fabriqué le plus fort dans la peau elle-même, et de moins en moins en descendant,
+  sans bande ni bord : encore un quart du maximum à 23 couches de profondeur.
+- Le relais n'a pas d'endroit à lui : il vaut partout à peu près ce qui est fabriqué sur place.
+  Il ne monte de nulle part.
+- Chaque maillon répond en courbe douce et écrase le contraste : la cytokinine tombe de 12 fois
+  entre le sommet et 23 couches plus bas, la fabrication de 4 fois, le relais de 2,4 fois, la
+  jeunesse de 1,3 fois.
+- Le signal de retenue ne pèse presque rien : 0,135 au sommet pour un demi-effet à 1, soit 4 à
+  12 % de fabrication en moins. Il règle la taille seulement parce que tout est au seuil.
+- Il ne vient pas surtout de la peau : l'estimation « cellule de la peau » vaut 0,06 à 0,18 pour
+  une cellule de l'intérieur (0,5 à 0,8 à la peau), et les cellules de l'intérieur sont bien plus
+  nombreuses. Dans la coupe à 4 sous le sommet, elles émettent environ les deux tiers du signal.
+  Et il porte plus loin que la cytokinine (il perd un facteur 2,7 en dix couches, elle 5,5), à
+  l'inverse de Gruel où le répresseur est le signal court.
+- Rien ne distingue le centre du flanc : pas de domaine au milieu du dôme.
+
+Vérifié par les réglages seuls, sans règle nouvelle (quinze essais, bilan et planche) :
+
+| Essai | Fabrication sous le sommet | Relais, jeunesse | Plante |
+|---|---|---|---|
+| Signal de retenue 3 à 30 fois plus fort, relais 1 à 10 fois | plate ou décroissante, jamais en bande | plats | aucune tige, ou une boule (35 de large pour 38 de haut) |
+| Signal de retenue court et fort (efface dix fois plus vite, fabriqué 30 à 300 fois plus) | une bande apparaît : 0,10 à la peau, 0,18 à quatre couches, 0,10 à treize | toujours plats (relais 0,73 à 0,79 sur dix couches) | un dôme qui sort à peine (11 de haut), ou une boule |
+
+Un signal court creuse donc bien le relais hors de la peau, comme chez Gruel, mais la bande fait
+dix couches d'épaisseur sur toute la largeur de la tige, le relais s'y étale, et la plante reste
+en tout ou rien. La bande ne suffit pas : il manque ce qui fait d'un champ doux un domaine à bords
+nets et de taille propre.
+
+Cause que l'écart désigne, proposée à Mickaël (pas ajoutée) : le relais entretient sa propre
+fabrication. Dans le réel, WUS éteint les freins de la réponse à la cytokinine (les gènes ARR de
+type A), donc une cellule qui tient du relais entend mieux la cytokinine et en fabrique davantage
+(Leibfried 2005, Gordon 2009 ; section 2 de la recherche). Avec le signal de retenue qui porte
+plus loin, c'est un couple activateur / inhibiteur : il donne une tache de taille propre au lieu
+d'un dégradé (Fujita 2011). Notre boucle a l'inhibiteur, pas l'auto-entretien. La réponse en
+interrupteur essayée plus haut durcissait la lecture d'un champ resté doux ; ici c'est le champ
+lui-même qui se concentre. Défaut à corriger dans le même lot : le signal de retenue émis par
+l'intérieur.
+
+Prochaine étape : sur décision de Mickaël, ajouter cette cause (juge, test chiffré, carte), puis
+la juger au bilan (coupe en travers : relais fort dans l'axe, faible au flanc) et à la planche.
+Ensuite la silhouette trop épaisse (la pointe est aujourd'hui aussi large que la tige, sans doute
+la même cause), puis la fontaine inversée de la racine.

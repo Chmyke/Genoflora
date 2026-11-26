@@ -2,7 +2,9 @@
 //! whether it looks like a plant: how slender the stem and the root are, how many young foci the
 //! air holds and how big, how much younger the young cells are than the others (a tip that only
 //! stands a hair above the dividing threshold is no tip), and for the highest focus how youth and
-//! hormones change from its centre to its edge.
+//! hormones change from its centre to its edge; then the same, layer by layer, going down under
+//! the highest cell and across the stem at three depths (where the relay is made, where it is
+//! found, where the cells are young: a tip is a place, a stem held at the threshold is not).
 //! Columns: step, cells, cells in the air, stem height, stem width (twice the root mean square
 //! distance to its axis), root depth, root width, foci of six cells or more, biggest focus, top
 //! focus (size, height, distance to the axis), mean youth of the young and of the other cells
@@ -12,7 +14,7 @@
 //! `profile=1` prints the centre-to-edge profile at every snapshot, not only at the last.
 
 use geno_gpu::{Adapter, GpuSim};
-use geno_sim::checks::{foci, profile, run};
+use geno_sim::checks::{Layer, across, foci, profile, run, under};
 use geno_sim::{Cells, Engine, Params};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -97,9 +99,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
         }
+        let summit = air.iter().max_by(|a, b| a[1].total_cmp(&b[1]));
+        if let Some(q) = summit.filter(|_| every_profile || shot == shots || full) {
+            let top = [q[0], q[1], q[2]];
+            println!("  under the summit, going down (cells within {UNDER_REACH} of its vertical)");
+            print_layers(&under(&cells, &p, top, UNDER_REACH, UNDER_LAYERS));
+            for depth in [ACROSS_NEAR, ACROSS_FAR, 0.5 * height] {
+                println!("  across the stem {depth:.0} under the summit, from its axis outward");
+                print_layers(&across(&cells, &p, top, depth, ACROSS_THICK, ACROSS_LAYERS));
+            }
+        }
         if full {
             break;
         }
     }
     Ok(())
+}
+
+/// Half-width of the column read under the summit, and how deep it is read.
+const UNDER_REACH: f32 = 2.0;
+const UNDER_LAYERS: usize = 24;
+/// Depths under the summit of the two slabs read near the tip (a third is read at mid-height),
+/// their thickness, and how far from the axis they are read.
+const ACROSS_NEAR: f32 = 4.0;
+const ACROSS_FAR: f32 = 12.0;
+const ACROSS_THICK: f32 = 2.0;
+const ACROSS_LAYERS: usize = 20;
+
+fn print_layers(layers: &[Layer]) {
+    println!("  layer cells youth light skin auxin cytokinin restraint relay making");
+    for (k, l) in layers.iter().enumerate().filter(|(_, l)| l.cells > 0) {
+        println!(
+            "  {k:>5} {:>5} {:>5.2} {:>5.2} {:>4.2} {:>5.2} {:>9.3} {:>9.3} {:>5.2} {:>6.3}",
+            l.cells, l.youth, l.light, l.skin, l.auxin, l.cytokinin, l.restraint, l.relay, l.making
+        );
+    }
 }

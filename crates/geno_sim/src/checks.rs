@@ -191,6 +191,91 @@ pub fn profile(c: &Cells, centre: [f32; 3], rings: usize) -> Vec<Ring> {
     out
 }
 
+/// The cells of one layer of a cut through the tissue: means over them.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Layer {
+    pub cells: usize,
+    pub youth: f32,
+    /// Light received at the last step.
+    pub light: f32,
+    /// How much they belong to the skin (`rules::exposed`).
+    pub skin: f32,
+    /// Concentrations.
+    pub auxin: f32,
+    pub cytokinin: f32,
+    pub restraint: f32,
+    pub relay: f32,
+    /// Share of the fullest relay making they are at: where the relay is made, as opposed to
+    /// where it is found.
+    pub making: f32,
+}
+
+/// Means over the cells that `layer_of` places in one of `layers` layers.
+fn cut(c: &Cells, p: &Params, layers: usize, layer_of: impl Fn(&[f32; 4]) -> Option<usize>) -> Vec<Layer> {
+    let mut out = vec![Layer::default(); layers];
+    for i in 0..c.count {
+        let q = c.pr[i];
+        let Some(layer) = layer_of(&q).and_then(|k| out.get_mut(k)) else {
+            continue;
+        };
+        let volume = q[3] * q[3] * q[3];
+        let [auxin, cytokinin, restraint, relay] = c.h[i].map(|h| h / volume);
+        layer.cells += 1;
+        layer.youth += c.youth[i];
+        layer.light += c.pin[i][3];
+        layer.skin += crate::rules::exposed(&gathered(c, p, i));
+        layer.auxin += auxin;
+        layer.cytokinin += cytokinin;
+        layer.restraint += restraint;
+        layer.relay += relay;
+        layer.making += crate::rules::ck_call(p, auxin, cytokinin) * crate::rules::heard(p, restraint);
+    }
+    for layer in &mut out {
+        let n = layer.cells.max(1) as f32;
+        for sum in [
+            &mut layer.youth,
+            &mut layer.light,
+            &mut layer.skin,
+            &mut layer.auxin,
+            &mut layer.cytokinin,
+            &mut layer.restraint,
+            &mut layer.relay,
+            &mut layer.making,
+        ] {
+            *sum /= n;
+        }
+    }
+    out
+}
+
+/// The tissue straight under `top`, layer by layer going down (along gravity), one dividing
+/// radius per layer: the cells within `reach` of the vertical line through `top`.
+pub fn under(c: &Cells, p: &Params, top: [f32; 3], reach: f32, layers: usize) -> Vec<Layer> {
+    cut(c, p, layers, |q| {
+        let d = [q[0] - top[0], q[1] - top[1], q[2] - top[2]];
+        let depth: f32 = (0..3).map(|k| d[k] * p.gravity[k]).sum();
+        let aside2: f32 = (0..3).map(|k| (d[k] - depth * p.gravity[k]).powi(2)).sum();
+        (depth >= 0.0 && aside2 <= reach * reach).then_some((depth / p.r_div) as usize)
+    })
+}
+
+/// The tissue across the plant at `depth` under `top`, from its own axis outward, one dividing
+/// radius per layer: the cells of a slab `thick` thick, sorted by their distance to the centre of
+/// the slab. The outermost filled layer is the skin of the flank.
+pub fn across(c: &Cells, p: &Params, top: [f32; 3], depth: f32, thick: f32, layers: usize) -> Vec<Layer> {
+    let below = |q: &[f32; 4]| -> f32 { (0..3).map(|k| (q[k] - top[k]) * p.gravity[k]).sum() };
+    let in_slab = |q: &[f32; 4]| (below(q) - depth).abs() <= 0.5 * thick;
+    let slab: Vec<&[f32; 4]> = c.alive().iter().filter(|q| in_slab(q)).collect();
+    let n = slab.len().max(1) as f32;
+    let centre = [0, 1, 2].map(|k| slab.iter().map(|q| q[k]).sum::<f32>() / n);
+    cut(c, p, layers, |q| {
+        let d = [q[0] - centre[0], q[1] - centre[1], q[2] - centre[2]];
+        let along: f32 = (0..3).map(|k| d[k] * p.gravity[k]).sum();
+        let aside2: f32 = (0..3).map(|k| (d[k] - along * p.gravity[k]).powi(2)).sum();
+        in_slab(q).then_some((aside2.sqrt() / p.r_div) as usize)
+    })
+}
+
 /// Total hormone, all kinds together.
 pub fn mass(c: &Cells) -> f64 {
     c.hormone().iter().flatten().map(|&h| f64::from(h)).sum()
@@ -424,6 +509,63 @@ mod tests {
         let light = light_on(&cells, &p);
         assert_eq!(light[0], 1.0);
         assert!((light[1] - (-p.shade).exp()).abs() < 1e-6, "{light:?}");
+    }
+
+    /// A column of five cells going down from `h`, the n-th holding `n` of relay and a youth of
+    /// `n / 10`, and one more cell far aside at the height of the third.
+    fn column(h: f32) -> Cells {
+        let mut cells = Cells::empty(6);
+        cells.count = 6;
+        for n in 0..5 {
+            cells.pr[n] = [0.0, h - 1.5 * n as f32, 0.0, 1.0];
+            cells.h[n][crate::cells::RELAY] = n as f32;
+            cells.youth[n] = n as f32 / 10.0;
+        }
+        cells.pr[5] = [4.5, h - 3.0, 0.0, 1.0];
+        cells.h[5][crate::cells::RELAY] = 9.0;
+        cells
+    }
+
+    #[test]
+    fn the_cut_under_a_top_reads_each_depth_and_leaves_out_what_lies_aside() {
+        let p = Params::default();
+        let cells = column(p.surface + 20.0);
+        let layers = under(&cells, &p, [0.0, p.surface + 20.0, 0.0], 2.0, 8);
+        // Cells every 1.5 down: depths 0, 1.5, 3, 4.5, 6 fall in layers 0, 1, 3, 4, 6.
+        let found: Vec<usize> = layers.iter().map(|l| l.cells).collect();
+        assert_eq!(found, [1, 1, 0, 1, 1, 0, 1, 0]);
+        assert_eq!(layers[3].relay, 2.0);
+        assert!((layers[4].youth - 0.3).abs() < 1e-6);
+        // The top of the column has a neighbour on one side only: all skin. The middle has two
+        // opposite ones: inside.
+        assert_eq!(layers[0].skin, 1.0);
+        assert!(layers[3].skin < 1e-6, "{}", layers[3].skin);
+    }
+
+    #[test]
+    fn the_cut_across_sorts_a_slab_from_its_centre_outward() {
+        let p = Params::default();
+        let cells = column(p.surface + 20.0);
+        let top = [0.0, p.surface + 20.0, 0.0];
+        // The slab at depth 3 holds the third cell of the column and the one aside, 4.5 apart:
+        // each lies 2.25 from their centre.
+        let layers = across(&cells, &p, top, 3.0, 1.0, 4);
+        let found: Vec<usize> = layers.iter().map(|l| l.cells).collect();
+        assert_eq!(found, [0, 0, 2, 0]);
+        assert_eq!(layers[2].relay, 5.5);
+    }
+
+    #[test]
+    fn the_making_of_relay_is_read_from_the_rules() {
+        let p = Params::default();
+        let mut cells = column(p.surface + 20.0);
+        cells.h[0][crate::cells::CYTOKININ] = p.ck_half;
+        cells.h[0][crate::cells::RESTRAINT] = p.restraint_half;
+        let top = [0.0, p.surface + 20.0, 0.0];
+        let layers = under(&cells, &p, top, 2.0, 2);
+        // Half the cytokinin call, half heard through the restraint signal, no auxin.
+        assert_eq!(layers[0].making, 0.25);
+        assert_eq!(layers[1].making, 0.0);
     }
 
     #[test]
