@@ -1,5 +1,6 @@
 //! The judge: single thread, every pair tested (O(N^2)), sums in index order. Slow and obvious.
 
+use crate::bonds::{Bonds, pull};
 use crate::cells::Cells;
 use crate::engine::{Engine, EngineError};
 use crate::params::Params;
@@ -10,6 +11,9 @@ pub struct Reference {
     cur: Cells,
     next: Cells,
     epoch: u32,
+    /// Prototype: the bonds between cells and how hard they pull, when cells keep their
+    /// neighbours (see `bonds`).
+    glue: Option<(Bonds, f32)>,
 }
 
 impl Reference {
@@ -19,7 +23,24 @@ impl Reference {
             cur: cells.clone(),
             next: cells.clone(),
             epoch: 0,
+            glue: None,
         }
+    }
+
+    /// Prototype: the same judge, but its cells keep their neighbours. Cells bonded by a division
+    /// pull each other with `strength` across any gap; cells that merely touch no longer stick.
+    /// `touch`: how close a neighbour must lie to a daughter to stay bonded to it (see `bonds`).
+    pub fn glued(p: &Params, cells: &Cells, strength: f32, touch: f32) -> Self {
+        Self {
+            p: Params { mob_adh: 0.0, ..*p },
+            glue: Some((Bonds::new(cells.capacity(), touch), strength)),
+            ..Self::new(p, cells)
+        }
+    }
+
+    /// The bonds, when the cells keep their neighbours.
+    pub fn bonds(&self) -> Option<&Bonds> {
+        self.glue.as_ref().map(|(b, _)| b)
     }
 }
 
@@ -34,6 +55,14 @@ impl Engine for Reference {
                     interact(&me, &self.cur.get(j), &self.p, &mut g);
                 }
             }
+            if let Some((bonds, strength)) = &self.glue {
+                for j in bonds.of(i) {
+                    let d = pull(&me, &self.cur.get(j), *strength);
+                    for (sum, part) in g.disp.iter_mut().zip(d) {
+                        *sum += part;
+                    }
+                }
+            }
             self.next.set(i, finish(&me, &g, &self.p));
         }
         self.next.count = n;
@@ -41,7 +70,13 @@ impl Engine for Reference {
     }
 
     fn divide(&mut self) {
-        divide(&mut self.cur, &self.p, self.epoch);
+        if let Some((bonds, _)) = &mut self.glue {
+            let before = self.cur.clone();
+            divide(&mut self.cur, &self.p, self.epoch);
+            bonds.inherit(&before, &self.cur);
+        } else {
+            divide(&mut self.cur, &self.p, self.epoch);
+        }
         self.epoch += 1;
     }
 

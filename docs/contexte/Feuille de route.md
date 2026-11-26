@@ -823,6 +823,49 @@ tout allongement s'écoule sur les côtés. C'est la cause numéro 5 de la reche
 permanentes »), devenue la première. Elle touche le cœur du moteur (liste de voisines par cellule,
 division, forces) : à décider avant d'écrire.
 
-Prochaine étape : sur décision de Mickaël, les voisines permanentes. Ensuite reprendre la taille
-de la pointe avec l'auto-entretien (la calotte aussi large que la tige), puis la fontaine inversée
-de la racine.
+Les voisines permanentes, en prototype dans le juge (2026-11-26, décision de Mickaël : cette
+cause, et d'abord dans le juge seul). `geno_sim/src/bonds.rs` : un lien naît à la division entre
+les deux filles, n'est jamais refait, et quand une cellule liée se divise chaque lien va à la fille
+qui touche la voisine (aux deux si les deux la touchent). Deux cellules liées se tirent dès qu'un
+vide les sépare, sans limite de distance ; deux cellules qui se touchent sans lien ne collent
+plus. Le moteur de la carte n'est pas touché (`Reference::glued`, éteint par défaut). Sonde :
+`cargo run --release -p geno_sim --example glue -- <pas> <relevés> <force> [touch=] [paramètres]`,
+une seconde par essai.
+
+Verdict : tel quel, cela ne marche pas, et la mesure dit pourquoi.
+
+| Partage des liens à la division | Liens par cellule | Liens entre cellules qui ne se touchent plus | Pression (la croissance s'arrête à 1) | Plante à 12 000 pas |
+|---|---|---|---|---|
+| Sans liens (référence) | 0 | | 0,37 | 2 048 cellules, tige 24 de haut |
+| Fille qui touche (portée 1,2) | 4 | 2 à 6 % | 0,42 | pareille, glisse autant (0,79 à 0,96 gardées) |
+| Fille proche (portée 1,5), liens forts | 9 à 10 | 26 % | 0,88 | 330 cellules, rien à l'air |
+| Fille proche (portée 1,5), liens quatre fois plus faibles | 10 | 34 % | 0,61 | 430 cellules, tige 9 de haut |
+| Par la coupe (la voisine que la nouvelle paroi traverse) | 10 à 12 | 35 à 50 % | 0,9 à 1,9 | 60 à 400 cellules, rien à l'air |
+
+- Avec le seul contact, une cellule ne garde que 4 liens : des sphères ne remplissent pas la place
+  de leur mère, un quart seulement des voisines touche les deux filles. Un tissu réel en a une
+  douzaine. Quatre liens ne tiennent rien.
+- Dès qu'on en donne une dizaine, le tissu s'écrase lui-même. Un tiers à la moitié des liens
+  relient des cellules qui ne se touchent plus, une troisième s'étant glissée entre elles : ce ne
+  sont plus des parois, ce sont des élastiques tendus à travers le tissu. Même avec peu de liens
+  distendus (10 %, liens forts), la pression double.
+- La direction est pourtant la bonne : dans le seul essai où le tissu lié pousse (cellules
+  allongées, portée 1,5, liens faibles), la tige est plus fine à hauteur égale (16,5 de haut pour
+  7,8 de large et 155 cellules à l'air, contre 17,8 pour 10,3 et 395 cellules sans liens).
+
+Ce que l'écart désigne : un lien sans longueur propre n'est pas une paroi. Dans une plante, deux
+voisines sont tenues à la distance où leur paroi commune a été posée, et cette paroi cède sous la
+pression quand le tissu grandit (c'est par là que l'auxine fait pousser). Ici le lien veut toujours
+ramener les deux cellules au contact : une dizaine de liens par cellule ne peuvent pas tous être
+satisfaits à la fois dans un empilement de sphères, d'où une tension permanente que les
+recouvrements compensent, et la croissance s'arrête. Il manque au lien sa longueur de repos, et à
+cette longueur de céder. Pas ajouté : à décider avec Mickaël.
+
+Défaut trouvé en passant, non corrigé : un test de `geno_gpu/tests/emergence.rs` a tourné à vide
+une heure et quart pendant que la sonde `report` utilisait la carte en même temps (un cœur occupé,
+jamais de fin). Relancée seule, la vérification passe en 6 minutes. Tant que ce n'est pas compris,
+ne pas lancer de sonde sur la carte pendant `check.ps1`.
+
+Prochaine étape : décision de Mickaël sur la suite des voisines permanentes (longueur de repos qui
+cède, ou autre voie). Ensuite reprendre la taille de la pointe avec l'auto-entretien (la calotte
+aussi large que la tige), puis la fontaine inversée de la racine.

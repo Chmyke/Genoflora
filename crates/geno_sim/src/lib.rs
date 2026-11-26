@@ -7,6 +7,7 @@
 //! Pure and deterministic: no clock, no hash containers, no external crate.
 //! The plant shape must never be written here; it has to emerge from local cell rules.
 
+pub mod bonds;
 pub mod cells;
 pub mod checks;
 pub mod engine;
