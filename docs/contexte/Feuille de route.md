@@ -908,3 +908,32 @@ Prochaine étape, décidée par Mickaël (2026-11-26) : la pointe d'abord. Le pr
 reste dans le juge, éteint. Reprendre la taille de la pointe avec l'auto-entretien (la calotte
 aussi large que la tige, et qui grossit), puis la fontaine inversée de la racine. Ce travail se
 mesure sur la carte : la relancer libre, et commencer par repasser `check.ps1` en entier.
+
+### La pointe avec auto-entretien : mesurée, la boucle tient un niveau, pas une largeur (2026-11-26)
+
+Sonde `report 24000 8 profile=1 ck_brake=10 relay_made=0.1 restraint_made=0.45` et planche
+`geno_view --sheet` aux mêmes réglages. Constats chiffrés, aucun changement de code :
+
+- La partie aérienne est un bulbe, pas une tige : largeur 10, 14, 17 puis 20 (pas 15000 à 24000),
+  calotte jeune de 538, 722, 1152 puis 1418 cellules. La calotte, c'est tout ce qui se trouve à
+  moins de dix couches du sommet, sur toute la largeur.
+- En travers, tout est plat : relais 1,46 au centre contre 1,25 au bord, fabrication 0,17 partout.
+  Rien ne distingue le flanc du centre.
+- Le signal de retenue est une coquille : 0,9 sur la peau, 0,2 au centre, et le centre en reçoit de
+  moins en moins à mesure que le bulbe s'élargit (0,34 puis 0,21). Sa portée est d'une à deux
+  cellules.
+- Portée allongée, essayée par les réglages seuls : `restraint_decay=0.003` donne soit le même
+  gonflement (fabrication 0,05 : calotte 152 à 1768), soit plus de tige du tout (0,15). La portée
+  n'est donc pas la cause. (`restraint_diffusion=0.5` fait tout exploser en boule, sans doute hors
+  du domaine stable de la diffusion : essai sans valeur.)
+- Avec les cellules qui s'allongent (génome étiré) : tige plus haute (66 pour 28 de large), calotte
+  qui plafonne vers 1500 à 1600 cellules, mais la largeur monte encore (22, 25, 28).
+- Les cellules du dôme pointent dans tous les sens (0,63, le hasard vaut 0,5), celles de la tige
+  mûre sont dressées (0,95) ; l'auxine est basse et plate dans toute la partie aérienne (0,1 à 0,3).
+
+Lecture : un relais qui s'entretient lui-même avance comme un front, jusqu'où la cytokinine
+suffit, et la cytokinine vient de toute la peau éclairée, flancs compris. La boucle règle le
+niveau du relais, pas l'étendue de la zone jeune. Dans le réel, la largeur du dôme n'est pas tenue
+par cette boucle seule (Gruel 2016 : le domaine s'élargit avec le dôme) : les cellules du flanc
+quittent la pointe, là où l'auxine s'accumule dans la peau. Ici, aucune auxine ne marque le flanc.
+La cause à ajouter reste à choisir avec Mickaël.
