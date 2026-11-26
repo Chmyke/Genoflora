@@ -124,7 +124,10 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     let follow = ca / (P.pin_switch + ca);
     let uphill = (1.0 - follow) / max(richness, 1e-12);
     let along = follow / (P.flux_half + sqrt(dot(flux, flux)));
-    let goal = uphill * richer + along * flux + P.gravisense * vec3<f32>(P.gx, P.gy, P.gz);
+    // Read fairly, even neighbours pull the pumps nowhere; the skin holds no heavy grains.
+    let fair = P.pin_fair * richness / max(neighbours, 1.0);
+    let down = P.gravisense * max(1.0 - P.grav_skin * skin, 0.0);
+    let goal = uphill * (richer + fair * around) + along * flux + down * vec3<f32>(P.gx, P.gy, P.gz);
     let n = qi + P.pin_rate * (goal - qi);
     let len = sqrt(dot(n, n));
     var keep = 1.0;

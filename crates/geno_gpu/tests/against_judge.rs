@@ -273,3 +273,23 @@ fn stretching_cells_match_the_judge_cell_by_cell_on_a_short_run() -> Result<(), 
         Ok(())
     })
 }
+
+// The two prototypes of the pumps switched on (a skin that reads its neighbours fairly and
+// senses no gravity): the shaders place the pumps as the judge does, so auxin ends in the same
+// cells.
+#[test]
+fn skin_cells_place_their_pumps_like_on_the_judge() -> Result<(), EngineError> {
+    on_each_adapter(|adapter| {
+        let p = Params {
+            pin_fair: 1.0,
+            grav_skin: 5.0,
+            ..stretching()
+        };
+        let start = lattice(500, 4096, &p);
+        let mut gpu = GpuSim::new(&p, &start, adapter)?;
+        let gap = gap_to_judge(&mut gpu, &p, &start, exact_steps(adapter))?;
+        assert_eq!(gap.counts.0, gap.counts.1, "{adapter:?} {gap:?}");
+        assert!(gap.position <= 1e-3 && gap.mass <= 1e-4, "{adapter:?} {gap:?}");
+        Ok(())
+    })
+}

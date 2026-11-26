@@ -44,7 +44,7 @@ pub struct Params {
     /// what its neighbours hold, so a cell of the skin, with neighbours on one side only, pumps
     /// inward even when they all hold the same. At 1 it reads only how they differ from one
     /// another (a gradient), so even neighbours pull its pumps nowhere.
-    /// PROTOTYPE (judge only, 2026-11-26): not in the shaders, keep at 0 on the card.
+    /// PROTOTYPE (2026-11-26), off in the default genome.
     pub pin_fair: f32,
     /// Auxin flow through a cell at which its pumps follow the flow half as much as they can.
     pub flux_half: f32,
@@ -54,7 +54,7 @@ pub struct Params {
     /// How much of its sense of gravity a cell of the skin loses, per unit of how much it is skin
     /// (`rules::skin`, 0.2 to 0.6 on a real skin): 0, every cell senses gravity alike; 5, a cell
     /// that is skin by 0.2 or more senses none. The skin of a plant holds no heavy grains.
-    /// PROTOTYPE (judge only, 2026-11-26): not in the shaders, keep at 0 on the card.
+    /// PROTOTYPE (2026-11-26), off in the default genome.
     pub grav_skin: f32,
     /// Auxin every cell makes per step, per unit of its volume, in the dark.
     pub production: f32,

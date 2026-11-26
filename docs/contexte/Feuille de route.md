@@ -1110,5 +1110,25 @@ aussi, correction d'une lecture ancienne : dans une vraie racine la zone qui se 
 toute la largeur de la pointe ; seul le maximum d'auxine (centre quiescent) est étroit. Une pointe
 jeune aussi large que la racine n'est donc pas en soi un écart au réel.
 
-Reste à décider : porter `grav_skin` sur la carte pour juger à la planche à 16 000 cellules.
-`pin_fair` et `grav_skin` sont dans le juge seulement ; à 0 ils ne changent rien.
+Porté sur la carte (décision de Mickaël, 2026-11-27) : `pin_fair` et `grav_skin` sont recopiés
+dans `step.wgsl`, éteints par défaut, et comparés au juge cellule par cellule
+(`skin_cells_place_their_pumps_like_on_the_judge`). Jugé au bilan et à la planche, pas 24000 :
+
+| | Référence | `grav_skin=5` | `grav_skin=5 pin_fair=1` (pas 18000) |
+|---|---|---|---|
+| Pompes à 4 du bout, axe / bord | -0,65 / -0,43 | -0,94 / +0,17 à +0,25 | -0,83 / +0,12 à +0,35 |
+| Pompes à 10 du bout, axe / bord | -0,66 / -0,26 | -0,80 / +0,43 à +0,61 | -0,67 / +0,27 |
+| Cellules | 12 122 | 16 384 (carte pleine) | 16 384 dès le pas 18000 |
+| Tige, hauteur × largeur | 73 × 17,5 | 79 × 20,7 | 57 × 30,7 |
+| Racine, profondeur × largeur | 51 × 17,2 | 50 × 21,3 | 34 × 20,5 |
+| Foyers jeunes en l'air | 3 | 2 | 8 à 13 |
+
+Verdict : la fontaine inversée émerge aussi à 16 000 cellules, nette. Mais la plante n'y gagne
+pas à l'œil : elle pousse plus vite et plus large, le bout de racine s'arrondit en massue, et le
+maximum d'auxine reste étalé sur toute la pointe (26 à 45 partout à 1 du bout). Avec `pin_fair`
+en plus, la tige s'épaissit franchement et se couvre de foyers jeunes. Les deux réglages restent
+donc éteints dans le génome par défaut : la circulation est juste, son effet sur la forme ne
+l'est pas encore. Ce qui manque pour que la fontaine resserre le maximum : dans le réel le retour
+par la peau rentre vers le centre juste au-dessus de la pointe et y repart vers le bas ; ici il
+remonte et se perd le long de la racine (auxine du bord 3 contre 1 à l'axe à 10 du bout).
+Planches : `target/planches/Racine reference.png`, `target/planches/Racine peau sans gravite.png`.

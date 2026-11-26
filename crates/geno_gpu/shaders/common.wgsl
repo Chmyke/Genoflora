@@ -13,7 +13,7 @@ struct Params {
     youth_half: f32, ck_light: f32, shade: f32, squeeze_hold: f32,
     restraint_made: f32, restraint_diffusion: f32, restraint_decay: f32, restraint_half: f32,
     relay_made: f32, relay_diffusion: f32, relay_decay: f32, relay_half: f32,
-    ck_brake: f32, relay_frees: f32,
+    ck_brake: f32, relay_frees: f32, pin_fair: f32, grav_skin: f32,
 }
 struct State { count: u32, epoch: u32, pad0: u32, pad1: u32 }
 // h = hormone amounts (auxin, cytokinin, restraint signal, relay). 32 bytes with its padding.
