@@ -5,6 +5,8 @@
 //! hormones change from its centre to its edge; then the same, layer by layer, going down under
 //! the highest cell and across the stem at three depths (where the relay is made, where it is
 //! found, where the cells are young: a tip is a place, a stem held at the threshold is not).
+//! Under each line: the silhouette of the stem and of the root in slices, and whether the mature
+//! cells of the stem kept their neighbours (cells of a plant never slide past each other).
 //! Columns: step, cells, cells in the air, stem height, stem width (twice the root mean square
 //! distance to its axis), root depth, root width, foci of six cells or more, biggest focus, top
 //! focus (size, height, distance to the axis), mean youth of the young and of the other cells
@@ -14,7 +16,9 @@
 //! `profile=1` prints the centre-to-edge profile at every snapshot, not only at the last.
 
 use geno_gpu::{Adapter, GpuSim};
-use geno_sim::checks::{Layer, across, foci, profile, run, under};
+use geno_sim::checks::{
+    Layer, across, foci, kept_neighbours, length_over_width, long_axis, profile, run, under,
+};
 use geno_sim::{Cells, Engine, Params};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -37,8 +41,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "step cells air height width root_depth root_width foci biggest top_size top_height top_off_axis youth_young youth_other"
     );
     for shot in 1..=shots {
-        run(&mut sim, steps / shots, Some(p.divide_every));
+        // Do the mature cells of the stem slide past each other? Their neighbours a little before
+        // the snapshot, against their neighbours at the snapshot.
+        let watched = SLIDE_STEPS.min(steps / shots);
+        run(&mut sim, steps / shots - watched, Some(p.divide_every));
+        let earlier = sim.snapshot()?;
+        run(&mut sim, watched, Some(p.divide_every));
         let cells = sim.snapshot()?;
+        let mature_stem = |c: &Cells, i: usize| {
+            geno_sim::soil::share(&p, &c.pr[i][..3]) < 0.5 && c.youth[i] <= geno_sim::params::YOUNG
+        };
+        let kept = kept_neighbours(&earlier, &cells, &p, mature_stem);
         let in_air = |q: &[f32; 4]| geno_sim::soil::share(&p, &q[..3]) < 0.5;
         let air: Vec<&[f32; 4]> = cells.alive().iter().filter(|q| in_air(q)).collect();
         let height = air.iter().map(|q| q[1]).fold(p.surface, f32::max) - p.surface;
@@ -87,6 +100,46 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             mean_youth(true),
             mean_youth(false),
         );
+        // The silhouette, in equal slices of the stem (from the soil up) and of the root (from the
+        // soil down): width, share of young cells, mean cell radius, how much longer than wide
+        // the cells are and how upright their long axis lies (1: along gravity).
+        let slices = |from: f32, span: f32| {
+            let mut out = String::new();
+            for k in 0..SLICES {
+                // How far along the organ a cell lies, from 0 at the soil surface to 1 at its end.
+                let inside = |q: &[f32; 4]| {
+                    let along = (q[1] - from) / span * SLICES as f32;
+                    along >= k as f32 && along < (k + 1) as f32
+                };
+                let part: Vec<&[f32; 4]> = cells.alive().iter().filter(|q| inside(q)).collect();
+                let members: Vec<usize> = (0..cells.count).filter(|&i| inside(&cells.pr[i])).collect();
+                let n = members.len().max(1) as f32;
+                let mean = |of: &dyn Fn(usize) -> f32| members.iter().map(|&i| of(i)).sum::<f32>() / n;
+                let upright = |i: usize| {
+                    long_axis(&cells.shape[i]).map_or(0.0, |a| {
+                        (0..3).map(|k| a[k] as f32 * p.gravity[k]).sum::<f32>().abs()
+                    })
+                };
+                out += &format!(
+                    " {:>4.1}/{:<4.2}/{:<4.2}/{:<3.1}/{:<4.2}",
+                    width(&part),
+                    mean(&|i| f32::from(u8::from(cells.youth[i] > geno_sim::params::YOUNG))),
+                    mean(&|i| cells.pr[i][3]),
+                    mean(&|i| length_over_width(&cells.shape[i]) as f32),
+                    mean(&upright),
+                );
+            }
+            out
+        };
+        println!(
+            "  stem from the soil up, width/young/radius/length over width/upright:{}",
+            slices(p.surface, height + 0.01)
+        );
+        println!(
+            "  root from the soil down, width/young/radius/length over width/upright:{}",
+            slices(p.surface, -(depth + 0.01))
+        );
+        println!("  mature cells of the stem kept {kept:.2} of their neighbours over {watched} steps");
         let full = cells.count >= capacity * 97 / 100;
         if let Some(f) = top.filter(|_| every_profile || shot == shots || full) {
             println!(
@@ -116,6 +169,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// Steps over which the neighbours of the mature cells are followed before every snapshot.
+const SLIDE_STEPS: u32 = 1000;
+/// Slices of the stem and of the root whose width is printed.
+const SLICES: usize = 6;
 /// Half-width of the column read under the summit, and how deep it is read.
 const UNDER_REACH: f32 = 2.0;
 const UNDER_LAYERS: usize = 24;

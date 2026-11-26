@@ -276,6 +276,36 @@ pub fn across(c: &Cells, p: &Params, top: [f32; 3], depth: f32, thick: f32, laye
     })
 }
 
+/// Share of the pairs of neighbours of `before` that are still neighbours in `after`, among the
+/// cells that `keep` retains in both (a cell keeps its index for life). The cells of a plant are
+/// glued by their walls and never change neighbours: 1. Cells that slide past each other like a
+/// liquid lose them.
+pub fn kept_neighbours(
+    before: &Cells,
+    after: &Cells,
+    p: &Params,
+    keep: impl Fn(&Cells, usize) -> bool,
+) -> f32 {
+    let touching = |c: &Cells, i: usize, j: usize| {
+        let mut g = crate::rules::Gathered::default();
+        crate::rules::interact(&c.get(i), &c.get(j), p, &mut g);
+        g.neighbours > 0.0
+    };
+    let kept: Vec<usize> = (0..before.count.min(after.count))
+        .filter(|&i| keep(before, i) && keep(after, i))
+        .collect();
+    let (mut pairs, mut still) = (0usize, 0usize);
+    for (a, &i) in kept.iter().enumerate() {
+        for &j in &kept[a + 1..] {
+            if touching(before, i, j) {
+                pairs += 1;
+                still += usize::from(touching(after, i, j));
+            }
+        }
+    }
+    still as f32 / pairs.max(1) as f32
+}
+
 /// Total hormone, all kinds together.
 pub fn mass(c: &Cells) -> f64 {
     c.hormone().iter().flatten().map(|&h| f64::from(h)).sum()
@@ -540,6 +570,21 @@ mod tests {
         // opposite ones: inside.
         assert_eq!(layers[0].skin, 1.0);
         assert!(layers[3].skin < 1e-6, "{}", layers[3].skin);
+    }
+
+    #[test]
+    fn neighbours_that_slide_apart_are_counted_as_lost() {
+        let p = Params::default();
+        let before = column(p.surface + 20.0);
+        let all = |_: &Cells, _: usize| true;
+        assert_eq!(kept_neighbours(&before, &before, &p, all), 1.0);
+        // The column has four pairs of neighbours; its second cell slides far aside and loses
+        // both of its own.
+        let mut after = before.clone();
+        after.pr[1][0] += 10.0;
+        assert_eq!(kept_neighbours(&before, &after, &p, all), 0.5);
+        // Leaving that cell out, the two pairs left are whole.
+        assert_eq!(kept_neighbours(&before, &after, &p, |_, i| i != 1), 1.0);
     }
 
     #[test]

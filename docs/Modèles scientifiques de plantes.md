@@ -188,4 +188,6 @@ Causes manquantes, par ordre de proximité avec les prochaines étapes :
 4. **Sucre.** Ressource consommée et rapide, absente du modèle : elle explique le réveil de la
    pointe et la retenue des bourgeons.
 5. **Voisines permanentes.** Les cellules d'une plante ne glissent pas. À mesurer d'abord : à quel
-   point les nôtres changent de voisines.
+   point les nôtres changent de voisines. Mesuré le 2026-11-26 : les cellules mûres de la tige
+   perdent 5 à 22 % de leurs voisines en 1 000 pas, et des cellules cinq fois plus longues que
+   larges élargissent la tige au lieu de l'allonger. Devenue la première cause manquante.

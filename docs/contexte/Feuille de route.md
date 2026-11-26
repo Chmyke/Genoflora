@@ -779,9 +779,50 @@ Mesuré (une graine, freins à 10, relais fabriqué à 0,1 ; bilan et planche
 Tests : `a_cell_that_holds_relay_hears_cytokinin_better` (juge) et
 `a_relay_that_sustains_its_own_making_sets_a_young_tip_apart_from_the_stem` (carte).
 
-Prochaine étape : la silhouette trop épaisse, qui est maintenant le même problème que la taille
-de la pointe : la calotte jeune est aussi large que la tige, donc la tige s'élargit sans fin.
-Mesurer d'abord ce qui fixe la largeur (coupe en travers au fil du temps, croissance des flancs),
-la comparer au réel (la zone périphérique d'un méristème est consommée par les organes, section 2
-de la recherche), proposer la cause à Mickaël. Décision en attente : allumer l'auto-entretien
-dans le génome de référence. Ensuite la fontaine inversée de la racine.
+Décision de Mickaël (2026-11-26) : l'auto-entretien reste éteint, la silhouette d'abord.
+
+La silhouette, mesurée (2026-11-26). Le bilan imprime maintenant, à chaque relevé, la tige et la
+racine en six tranches (largeur, part de cellules jeunes, rayon moyen des cellules, allongement,
+orientation de leur grand axe), et la part de leurs voisines que les cellules mûres de la tige ont
+gardée sur les 1 000 derniers pas (mesure `checks::kept_neighbours`).
+
+Plante de référence, une graine :
+
+- La pointe tient sa largeur : rayon 9 à 11 à quatre couches sous le sommet, de 16 000 à 36 000
+  pas. Ce n'est donc pas la pointe qui épaissit la tige dans ce génome (avec l'auto-entretien, si :
+  9 puis 14).
+- Sous la pointe, la tige gonfle : rayon 14 à 16, une fois et demie la pointe. Les cellules qui
+  mûrissent finissent de grossir en rond (rayon moyen 0,86 dans la tranche du sommet, 1,00
+  dessous), ce qui élargit autant que cela allonge.
+- Proportions : 118 de haut pour 32 de large à 36 000 pas, soit une quinzaine de cellules en
+  travers. Ce nombre de cellules en travers n'est pas loin du réel (une jeune tige en compte une
+  dizaine, chiffre de mémoire, non relu). Ce qui manque est la longueur.
+
+Dans une vraie tige, la longueur vient des cellules qui s'allongent dans l'axe en quittant la
+pointe (dix à cent fois leur largeur). Cette capacité existe ici (cellules allongées, éteinte par
+défaut). Essayée sur la plante de référence, par réglages seuls :
+
+| Cellules mûres | Allongement, orientation | Tige au même âge (≈ 5 000 cellules à l'air) |
+|---|---|---|
+| Rondes (référence) | 1,2 fois, sans orientation | 73 de haut, 17 à 20 de large |
+| Allongées (plafond 2,25) | 2,8 fois plus longues que larges, verticales à 0,95 | 75 de haut, 22 de large |
+| Très allongées (plafond 4) | 5,2 fois, verticales à 0,90 à 0,95 | 75 de haut, 28 de large |
+
+Des cellules cinq fois plus longues que larges, bien verticales, ne font pas monter la tige : elles
+l'élargissent. Le tissu se comporte comme un liquide. Mesure directe : les cellules mûres de la
+tige perdent 5 à 22 % de leurs voisines en 1 000 pas (référence : 0,78, 0,89, 0,95 gardées selon
+l'âge ; cellules allongées : 0,60, 0,87, 0,91). Dans une plante, c'est zéro : les cellules sont
+collées par leurs parois et ne glissent jamais (section 4 de la recherche). Une adhérence plus
+forte (réglage) ne tient les voisines qu'en étouffant la croissance : trois fois plus forte, la
+plante fait 38 de haut avec 650 cellules à l'air et glisse encore (0,93) ; dix fois, rien ne sort
+(4,7 de haut).
+
+Cause que l'écart désigne, proposée à Mickaël (pas ajoutée) : les cellules ne sont pas collées.
+Tant qu'elles glissent, la forme d'un organe ne peut pas venir de la croissance de ses cellules :
+tout allongement s'écoule sur les côtés. C'est la cause numéro 5 de la recherche (« voisines
+permanentes »), devenue la première. Elle touche le cœur du moteur (liste de voisines par cellule,
+division, forces) : à décider avant d'écrire.
+
+Prochaine étape : sur décision de Mickaël, les voisines permanentes. Ensuite reprendre la taille
+de la pointe avec l'auto-entretien (la calotte aussi large que la tige), puis la fontaine inversée
+de la racine.
