@@ -985,3 +985,39 @@ Piste suivante, à valider : étudier la boucle seule dans le juge, sur un bloc 
 pousse pas (peau éclairée d'un côté), et chercher pourquoi elle n'a pas d'état stable, en la
 comparant à Gruel 2016, où le relais ne s'entretient pas lui-même et où le domaine est borné par
 deux signaux de la peau de portées différentes.
+
+### La boucle relais et retenue seule, sur un tissu figé (2026-11-26)
+
+Sonde du juge `cargo run --release -p geno_sim --example relay_loop -- <pas> <rayon> <hauteur>
+[dome=1] [start=…] [paramètre=valeur]` : une colonne de cellules tassées au hasard, en l'air,
+éclairée d'en haut, qui ne pousse, ne bouge ni ne se divise, sans auxine. Dix secondes par essai,
+sans carte. Elle redonne le profil de la plante (relais plat en travers, jeune sur une dizaine de
+couches), donc ce profil vient de la boucle et non de la croissance. Réglages : `ck_brake=10
+relay_made=0.1`, 3000 pas.
+
+| Question | Mesure | Réponse |
+|---|---|---|
+| Deux états stables ? | départ à relais 0 ou 5 : résultat identique au chiffre près | non, un seul état, aucune mémoire |
+| Effet de seuil ? | `restraint_made` 0, 0,45, 1,5, 5 : 650, 475, 231, 0 cellules jeunes sur 972 ; relais sous le sommet 3,6, 2,2, 1,3, 0,65 | non, le niveau glisse en douceur |
+| Sent-elle la largeur ? | rayon 3, 5, 8 : 189, 475, 1257 cellules jeunes, soit la moitié du tissu à chaque fois | non, aucune |
+| Le frein suit-il la taille ? | retenue sous le sommet 0,60, 0,30, 0,17 quand le rayon passe de 3 à 8 | à l'envers : plus large, moins freiné |
+| Et avec un sommet arrondi ? | mêmes tendances (retenue 0,92, 0,58, 0,39) | la forme ne change rien |
+| Et une retenue à longue portée ? | `restraint_decay=0.0003` : retenue uniforme mais 1,23, 0,77, 0,61 selon le rayon | toujours à l'envers |
+
+Lecture :
+
+- La boucle règle un niveau de relais, le même tout le long d'une peau éclairée. Le « tout ou
+  rien » vu sur la plante n'est pas dans la boucle : c'est ce niveau uniforme qui passe d'un côté
+  ou de l'autre du seuil de jeunesse, et la croissance fait le reste.
+- La profondeur de la zone jeune est fixée par la portée de la cytokinine. La largeur n'est fixée
+  par rien : dans un tissu uniforme le long de sa peau, aucune boucle de ce genre ne peut la
+  sentir (c'est vrai aussi du modèle de Gruel, dont le domaine s'élargit avec le dôme).
+- Défaut propre au modèle : la retenue est faite par la surface et perdue dans le volume, et la
+  lecture « peau » faiblit sur une surface plate. Une pointe qui grossit est donc de moins en
+  moins freinée : la boucle pousse au gonflement au lieu de le contenir.
+
+Conséquence : la largeur de la pointe ne viendra pas de cette boucle. Elle doit venir du flanc
+(décision A1 de Mickaël : les cellules du flanc sortent par l'auxine), ce qui demande ensemble :
+une peau qui garde son auxine, une auxine qui ne garde jeune qu'à la dose d'un bout de racine, et
+un relais qui porte seul la pointe. Le bloc figé sert de banc d'essai rapide pour ce réglage
+(y remettre l'auxine : `light_production`, `production`).
