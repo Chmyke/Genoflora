@@ -6,11 +6,13 @@
 //! the stem kept over the last steps, mean bonds per cell, bonds lost for want of a free slot,
 //! share of the bonds whose two cells no longer touch, mean pressure on a cell (the sum of how
 //! deep its neighbours overlap it, in radii: growth stops when it reaches `1 / squeeze_hold`).
-//! Usage: cargo run --release -p geno_sim --example glue -- <steps> <snapshots> <bond strength>
-//!        [capacity=2048] [touch=1.2] [any parameter of the genome, as name=value]
-//! A bond strength of 0 runs the plain judge (cells stick to whatever they touch). `touch`: how
-//! close a neighbour must lie to a daughter to stay bonded to it (see `bonds`).
+//! Usage: cargo run --release -p geno_sim --example glue -- <steps> <snapshots> <wall strength>
+//!        [capacity=2048] [touch=1.2] [hold=0.1] [creep=0.01] [across=1]
+//!        [any parameter of the genome, as name=value]
+//! A wall strength of 0 runs the plain judge (cells stick to whatever they touch). `touch`,
+//! `hold`, `creep`, `across`: see `bonds::Glue`.
 
+use geno_sim::bonds::Glue;
 use geno_sim::checks::{kept_neighbours, run};
 use geno_sim::rules::{Gathered, interact};
 use geno_sim::{Cells, Engine, Params, Reference};
@@ -25,18 +27,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let strength: f32 = args.get(3).map_or(Ok(0.0), |s| s.parse())?;
     let mut p = Params::default();
     let mut capacity = 1 << 11;
-    let mut touch = p.reach;
+    let mut glue = Glue {
+        strength,
+        touch: p.reach,
+        hold: 0.1,
+        creep: 0.01,
+        across: 1.0,
+    };
     for arg in args.iter().skip(4) {
         let (key, value) = arg.split_once('=').ok_or("expected key=value")?;
         match key {
             "capacity" => capacity = value.parse()?,
-            "touch" => touch = value.parse()?,
+            "touch" => glue.touch = value.parse()?,
+            "hold" => glue.hold = value.parse()?,
+            "creep" => glue.creep = value.parse()?,
+            "across" => glue.across = value.parse()?,
             _ => p.set(key, value)?,
         }
     }
     let seed = Cells::seed(&p, capacity, 1.0);
     let mut sim = if strength > 0.0 {
-        Reference::glued(&p, &seed, strength, touch)
+        Reference::glued(&p, &seed, glue)
     } else {
         Reference::new(&p, &seed)
     };

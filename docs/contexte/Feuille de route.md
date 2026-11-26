@@ -861,11 +861,46 @@ satisfaits à la fois dans un empilement de sphères, d'où une tension permanen
 recouvrements compensent, et la croissance s'arrête. Il manque au lien sa longueur de repos, et à
 cette longueur de céder. Pas ajouté : à décider avec Mickaël.
 
-Défaut trouvé en passant, non corrigé : un test de `geno_gpu/tests/emergence.rs` a tourné à vide
-une heure et quart pendant que la sonde `report` utilisait la carte en même temps (un cœur occupé,
-jamais de fin). Relancée seule, la vérification passe en 6 minutes. Tant que ce n'est pas compris,
-ne pas lancer de sonde sur la carte pendant `check.ps1`.
+La paroi qui cède (2026-11-26, décision de Mickaël). Chaque lien retient maintenant l'écart où la
+paroi a été posée (à la division, là où se tiennent les deux cellules), ne tire que si on l'étire
+au-delà, et, étiré plus qu'il ne tient, s'allonge pour de bon (`bonds::Glue` : force, seuil
+`hold`, vitesse `creep`). Une variante ne cède que dans le sens où les deux cellules poussent et
+tient en travers (`across`, le rôle des fibres de cellulose). Les liens d'avant (sans longueur
+propre) sont remplacés, leur verdict reste ci-dessus.
 
-Prochaine étape : décision de Mickaël sur la suite des voisines permanentes (longueur de repos qui
-cède, ou autre voie). Ensuite reprendre la taille de la pointe avec l'auto-entretien (la calotte
-aussi large que la tige), puis la fontaine inversée de la racine.
+Génome à cellules allongées, 14 000 pas, plafond de 2 048 cellules, une dizaine de liens par
+cellule (portée 1,5) :
+
+| Parois | Cellules à l'air | Tige (haut, large) | Voisines gardées | Pression |
+|---|---|---|---|---|
+| Aucune (référence) | 1 050 | 38, 15 | 0,95 | 0,26 |
+| Qui cèdent, souples | 1 320 à 1 360 | 35, 19 à 20 | 0,96 à 0,97 | 0,30 à 0,34 |
+| Qui cèdent, raides | 1 250 à 1 400 | 27 à 33, 15 à 19 | 0,94 à 0,98 | 0,58 à 0,68 |
+| Qui tiennent davantage (seuil 0,05), raides, cession rapide | 27 | 6, 6 | 1,00 | 0,82 |
+| Qui ne cèdent que dans le sens de croissance, souples | 1 360 à 1 390 | 37 à 41, 18 à 19 | 0,96 à 0,98 | 0,30 |
+| Qui ne cèdent que dans le sens de croissance, raides | 1 100 à 1 320 | 25 à 32, 14 à 19 | 0,92 à 0,96 | 0,61 à 0,66 |
+
+- L'étouffement est levé : la plante atteint son plafond dans presque tous les réglages. C'était
+  bien la longueur de repos qui manquait pour que le tissu lié puisse grandir.
+- La silhouette ne change pas : la tige n'est pas plus fine, plutôt plus large à hauteur égale.
+  Une paroi qui cède assez pour laisser grandir laisse aussi couler, et faire tenir le travers
+  n'y change rien de mesurable.
+- Les voisines gardées montent peu (0,96 à 0,98 contre 0,95) : la mesure ne voit que les
+  contacts, et un tiers des liens relient toujours des cellules qui ne se touchent pas.
+
+Limites de cet essai, à ne pas oublier : à 2 048 cellules la tige fait une dizaine de cellules de
+large pour une vingtaine de haut, ce n'est pas encore une tige (sur la carte : 118 pour 32) ; et
+les liens ne viennent que du lignage, avec des sphères qui ne remplissent pas la place de leur
+mère. Trois formes de lien essayées (élastique, paroi qui cède, paroi qui cède dans un sens) :
+aucune ne donne une tige plus fine. Ce prototype n'est donc pas à porter sur la carte en l'état.
+
+Piège rencontré trois fois ce jour : quand un autre programme occupe la carte graphique (ici un
+entraînement d'images, carte à 90 %), les tests de `geno_gpu/tests/emergence.rs` ne finissent pas
+(plus d'une heure au lieu de 4 minutes, un cœur occupé à attendre), et `check.ps1` finit rouge sans
+dire pourquoi. Avant de conclure à une panne, regarder qui occupe la carte. État à ce commit :
+format, clippy, tests du juge (56) et comparaison au juge (10) verts ; tests d'émergence non
+passés, carte occupée, à relancer quand elle est libre (ce lot ne touche que le juge).
+
+Prochaine étape : décision de Mickaël (poursuivre les parois autrement, ou revenir à la pointe).
+Restent ensuite la taille de la pointe avec l'auto-entretien (la calotte aussi large que la tige)
+et la fontaine inversée de la racine.
