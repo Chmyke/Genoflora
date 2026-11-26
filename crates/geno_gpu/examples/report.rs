@@ -7,6 +7,8 @@
 //! found, where the cells are young: a tip is a place, a stem held at the threshold is not).
 //! Under each line: the silhouette of the stem and of the root in slices, and whether the mature
 //! cells of the stem kept their neighbours (cells of a plant never slide past each other).
+//! Last, the root across at four heights above its tip: youth, auxin and which way the auxin
+//! pumps point (in a real root auxin goes down the middle and back up the outside).
 //! Columns: step, cells, cells in the air, stem height, stem width (twice the root mean square
 //! distance to its axis), root depth, root width, foci of six cells or more, biggest focus, top
 //! focus (size, height, distance to the axis), mean youth of the young and of the other cells
@@ -162,11 +164,63 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 print_layers(&across(&cells, &p, top, depth, ACROSS_THICK, ACROSS_LAYERS));
             }
         }
+        let tip = soil.iter().min_by(|a, b| a[1].total_cmp(&b[1]));
+        if let Some(q) = tip.filter(|_| every_profile || shot == shots || full) {
+            for above in [ROOT_NEAR, ROOT_MID, ROOT_FAR, 0.5 * depth] {
+                println!("  across the root {above:.0} above its tip, from its axis outward");
+                print_root_cut(&cells, &p, q[1] + above);
+            }
+        }
         if full {
             break;
         }
     }
     Ok(())
+}
+
+/// Heights above the root tip of the slabs read there (a fourth is read at mid-depth).
+const ROOT_NEAR: f32 = 1.0;
+const ROOT_MID: f32 = 4.0;
+const ROOT_FAR: f32 = 10.0;
+
+/// The root across, at height `at`: the cells of a slab, sorted by their distance to its centre,
+/// one dividing radius per layer. For each layer: how young, how much auxin, and which way the
+/// auxin pumps point, upward (against gravity, 1: straight up, -1: straight down) and outward
+/// (away from the axis, -1: straight toward it). A reverse fountain shows as pumps pointing down
+/// at the axis, up in the outer layers, and inward in between.
+fn print_root_cut(cells: &Cells, p: &Params, at: f32) {
+    let slab: Vec<usize> = (0..cells.count)
+        .filter(|&i| (cells.pr[i][1] - at).abs() <= 0.5 * ACROSS_THICK)
+        .collect();
+    let n = slab.len().max(1) as f32;
+    let mid = [0, 2].map(|k| slab.iter().map(|&i| cells.pr[i][k]).sum::<f32>() / n);
+    println!("  layer cells youth auxin pumps_up pumps_out");
+    for layer in 0..ACROSS_LAYERS {
+        let (mut count, mut youth, mut auxin, mut up, mut out) = (0.0_f32, 0.0, 0.0, 0.0, 0.0);
+        for &i in &slab {
+            let q = &cells.pr[i];
+            let aside = [q[0] - mid[0], q[2] - mid[1]];
+            let far = (aside[0] * aside[0] + aside[1] * aside[1]).sqrt();
+            if (far / p.r_div) as usize != layer {
+                continue;
+            }
+            let pin = &cells.pin[i];
+            count += 1.0;
+            youth += cells.youth[i];
+            auxin += cells.h[i][0] / (q[3] * q[3] * q[3]);
+            up -= (0..3).map(|k| pin[k] * p.gravity[k]).sum::<f32>();
+            out += (pin[0] * aside[0] + pin[2] * aside[1]) / far.max(1e-6);
+        }
+        if count > 0.0 {
+            println!(
+                "  {layer:>5} {count:>5.0} {:>5.2} {:>5.2} {:>8.2} {:>9.2}",
+                youth / count,
+                auxin / count,
+                up / count,
+                out / count
+            );
+        }
+    }
 }
 
 /// Steps over which the neighbours of the mature cells are followed before every snapshot.

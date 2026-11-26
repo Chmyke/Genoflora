@@ -1052,3 +1052,32 @@ et chaque tache est le départ d'un organe. La sortie du flanc, c'est donc la na
 feuilles : un chantier entier, pas un réglage. Briques déjà là : le banc figé et `pin_fair`.
 Limites du banc à lever avant : lui donner un puits en bas (une racine qui boit l'auxine), et
 mesurer l'auxine cellule par cellule sur la peau, pas par couche.
+
+### La racine : pas de fontaine inversée, toutes les pompes pointent vers le bas (2026-11-26)
+
+Décision de Mickaël : la racine d'abord, les feuilles (sortie du flanc) ensuite, en chantier à
+part. La sonde `report` lit maintenant la racine en travers à quatre hauteurs au-dessus de son
+bout : jeunesse, auxine, et sens des pompes (vers le haut, vers l'extérieur). Génome par défaut,
+pas 24000 :
+
+| Hauteur au-dessus du bout | Auxine axe / bord | Pompes vers le haut, axe / bord | Jeunesse |
+|---|---|---|---|
+| 1 | 36 à 60 partout | -0,27 / -0,28 | 0,93 partout |
+| 4 | 9 / 15 (plus au bord) | -0,65 / -0,43 | 0,8 partout |
+| 10 | 0,8 / 0,9 | -0,66 / -0,45 | 0,2 partout |
+| 25 (mi-racine) | 0,6 / 0,1 | -0,63 / -0,4 | 0,2 à 0,02 |
+
+Constat : aucune couche ne pompe vers le haut. L'auxine descend sur toute la largeur et
+s'entasse au bout : un entonnoir, pas une fontaine. Le maximum couvre toute la pointe (et il est
+même plus fort au bord qu'à l'axe à 4 du bout), donc la zone jeune est aussi large que la racine.
+
+Essais par les réglages seuls : `gravisense=0.1` (au lieu de 0,3) fait apparaître des pompes vers
+le haut dans les trois couches du bord à 10 du bout (0,03, 0,13, 0,69) contre -0,5 au cœur, mais
+la racine devient plus large (25) et moins profonde (40), l'auxine reste plate ; à 0,03 il n'y a
+plus de racine digne de ce nom (21 de profondeur, plante en boule).
+
+Ce que l'écart désigne : dans le modèle, toute cellule sent la gravité et tourne ses pompes vers
+le bas. Dans le réel, seules les cellules à statolithes la sentent (la coiffe au bout de la
+racine) ; la descente par le centre vient du flux lui-même (canalisation), et la peau, qui n'a pas
+de statolithes, pompe vers le haut. La gravité imposée à toutes les cellules est ce qui interdit
+le retour. Cause à choisir avec Mickaël.
