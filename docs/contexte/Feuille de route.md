@@ -962,3 +962,26 @@ Deux obstacles, mesurés :
    Une cellule doit donc savoir si elle est de tige ou de racine, ce que rien ne porte aujourd'hui.
 
 Aucune règle ajoutée : le second point touche à l'état d'une cellule, il se décide avec Mickaël.
+
+Décision de Mickaël (2026-11-26) : la cellule lit l'auxine par le niveau (l'auxine ne garde jeune
+qu'à la dose d'un bout de racine). Essayé d'abord sans code, par `youth_half=10` au lieu de 3
+(0,09 d'appel à la dose d'une tige, 0,67 à celle d'un bout de racine) :
+
+| Réglages (avec `youth_half=10`) | Résultat au pas 24000 |
+|---|---|
+| Génome par défaut | aucune tige, racine seule (183 cellules) |
+| Auto-entretien, `restraint_made=0.45` | aucune tige (186 cellules) |
+| Idem, `ck_brake=3` | aucune tige (296 cellules) |
+| Idem, `restraint_made` de 0,2 à 0,4 | boule jeune de 4600 à 7700 cellules, carte pleine dès le pas 12000 |
+
+Ce que cela révèle : aujourd'hui la pointe de tige naît et tient grâce à l'auxine qui garde jeune
+(la logique de la racine), pas grâce à la boucle relais et retenue. Laissée seule, la boucle est en
+tout ou rien : rien du tout à 0,45 de retenue, une boule qui envahit tout à 0,4. Elle ne règle
+aucune taille. La fenêtre étroite déjà notée plus haut (0,3 à 0,6) était le même défaut, masqué par
+l'auxine. Tant que la boucle n'a pas d'état stable intermédiaire, ni la sortie du flanc ni la
+lecture par seuil ne peuvent être jugées : aucune règle n'a été ajoutée, le code est inchangé.
+
+Piste suivante, à valider : étudier la boucle seule dans le juge, sur un bloc de cellules qui ne
+pousse pas (peau éclairée d'un côté), et chercher pourquoi elle n'a pas d'état stable, en la
+comparant à Gruel 2016, où le relais ne s'entretient pas lui-même et où le domaine est borné par
+deux signaux de la peau de portées différentes.
