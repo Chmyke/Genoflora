@@ -745,7 +745,43 @@ Le contraste ne change pas (jeunes 0,52 à 0,53, autres 0,35), comme attendu : l
 défaut, elle n'est pas la cause manquante. La tige est un peu plus fine (18 de large contre 20 à
 24 au même âge).
 
-Prochaine étape : ajouter l'auto-entretien du relais (juge, test chiffré, carte), puis
-la juger au bilan (coupe en travers : relais fort dans l'axe, faible au flanc) et à la planche.
-Ensuite la silhouette trop épaisse (la pointe est aujourd'hui aussi large que la tige, sans doute
-la même cause), puis la fontaine inversée de la racine.
+Le relais entretient sa fabrication (2026-11-26, cause validée par Mickaël). Une cellule a des
+freins sur sa réponse à la cytokinine, et le relais qu'elle tient les lève : sans relais, il lui
+faut `1 + ck_brake` fois plus de cytokinine pour répondre à moitié ; la moitié des freins est
+levée quand le relais atteint `relay_frees`. Réponse en courbe douce, sans interrupteur. Elle vaut
+pour tout ce que la cytokinine fait à la cellule (relais et croissance). Règle dans le juge,
+recopiée sur la carte, comparée cellule par cellule. Éteinte dans le génome par défaut
+(`ck_brake` 0) en attendant la décision de Mickaël : elle donne la pointe visible, pas encore la
+taille tenue.
+
+Mesuré (une graine, freins à 10, relais fabriqué à 0,1 ; bilan et planche
+`sorties/planches/Auto-entretien.png`) :
+
+| | Sans auto-entretien | Avec (signal de retenue 0,45) |
+|---|---|---|
+| Jeunesse, 4 sous le sommet / à mi-hauteur | 0,52 / 0,31 | 0,63 / 0,19 |
+| Relais, 4 sous le sommet / à mi-hauteur | 0,93 / 0,27 (3,5 fois) | 1,48 / 0,13 (11 fois) |
+| Jeunes / autres cellules à l'air | 0,53 / 0,35 | 0,58 / 0,25 |
+| Foyers jeunes à l'air | 4 à 11, des ramifications | 1 ou 2, le plus gros sur l'axe (écart 0,6) |
+
+- La pointe se voit : à la planche, une calotte jeune au sommet et une tige mûre dessous, le
+  relais rassemblé en haut, le signal de retenue en écorce sur la peau.
+- Une seule pointe, sur l'axe : les ramifications ont disparu.
+- La taille n'est plus tenue : la calotte occupe toute la largeur de la tige et grossit avec elle
+  (460, 840, 1 430, 1 540 cellules de 15 000 à 30 000 pas). En travers, tout reste plat de l'axe
+  au bord : rien ne distingue encore le centre du flanc.
+- Le signal de retenue règle la taille sur une fenêtre étroite : 3 000 cellules à 0,3, 1 500 à
+  0,45, 960 à 0,6, aucune tige à 0,8 (la jeune pousse, toute en peau, s'éteint avant de sortir).
+  Un signal plus court (efface sept fois plus vite) ne change rien.
+- La silhouette empire : la partie aérienne est un bulbe (23 de large pour 56 de haut), plus
+  large que le collet.
+
+Tests : `a_cell_that_holds_relay_hears_cytokinin_better` (juge) et
+`a_relay_that_sustains_its_own_making_sets_a_young_tip_apart_from_the_stem` (carte).
+
+Prochaine étape : la silhouette trop épaisse, qui est maintenant le même problème que la taille
+de la pointe : la calotte jeune est aussi large que la tige, donc la tige s'élargit sans fin.
+Mesurer d'abord ce qui fixe la largeur (coupe en travers au fil du temps, croissance des flancs),
+la comparer au réel (la zone périphérique d'un méristème est consommée par les organes, section 2
+de la recherche), proposer la cause à Mickaël. Décision en attente : allumer l'auto-entretien
+dans le génome de référence. Ensuite la fontaine inversée de la racine.

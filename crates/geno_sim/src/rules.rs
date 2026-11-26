@@ -98,9 +98,14 @@ pub fn interact(me: &Cell, other: &Cell, p: &Params, g: &mut Gathered) {
 }
 
 /// How strongly cytokinin calls in a cell, from 0 to 1: it holds cytokinin while auxin is scarce.
+/// A cell has brakes on its answer to cytokinin, and the relay it holds lifts them (WUS switches
+/// off the type-A ARR genes, Leibfried et al. 2005): a cell that holds relay hears cytokinin
+/// better, so the relay sustains its own making.
 #[inline]
-pub fn ck_call(p: &Params, auxin: f32, cytokinin: f32) -> f32 {
-    (cytokinin / (p.ck_half + cytokinin)) * (p.ck_block / (p.ck_block + auxin))
+pub fn ck_call(p: &Params, auxin: f32, cytokinin: f32, relay: f32) -> f32 {
+    let brakes = p.relay_frees / (p.relay_frees + relay);
+    let half = p.ck_half * (1.0 + p.ck_brake * brakes);
+    (cytokinin / (half + cytokinin)) * (p.ck_block / (p.ck_block + auxin))
 }
 
 /// Share of the cytokinin call a cell still hears through the restraint signal it holds.
@@ -153,8 +158,8 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
             - p.ck_decay * hi[1];
     // Even growth, up to the dividing size: holding a lot of auxin, or holding cytokinin while
     // auxin is scarce.
-    let (ca, cc) = (hi[0] / volume, hi[1] / volume);
-    let ck_push = ck_call(p, ca, cc);
+    let (ca, cc, cw) = (hi[0] / volume, hi[1] / volume, hi[3] / volume);
+    let ck_push = ck_call(p, ca, cc, cw);
     let drive = ca / (p.half_sat + ca) + ck_push;
     // The soil holds the cell and pushes back on it, but only through the walls that press on soil
     // rather than on other cells: a cell surrounded evenly touches no soil, a lone cell or the tip
@@ -169,7 +174,6 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
         hi[3] + p.relay_diffusion * g.spread[3] + p.relay_made * reading * volume - p.relay_decay * hi[3];
     // A cell of the skin that holds relay makes the restraint signal, which goes back to where
     // the relay is made.
-    let cw = hi[3] / volume;
     let told = cw / (p.relay_half + cw);
     let restraint = hi[2] + p.restraint_diffusion * g.spread[2] + p.restraint_made * told * skin(g) * volume
         - p.restraint_decay * hi[2];
@@ -515,6 +519,32 @@ mod tests {
         // Auxin opposes cytokinin, and the restraint signal halves the call at `restraint_half`.
         assert!(made([5.0, 50.0, 0.0]) < 0.3 * made([0.0, 50.0, 0.0]));
         assert!((made([0.0, 50.0, 1.0]) - 0.5 * made([0.0, 50.0, 0.0])).abs() < 1e-6);
+    }
+
+    #[test]
+    fn a_cell_that_holds_relay_hears_cytokinin_better() {
+        let p = Params {
+            ck_brake: 9.0,
+            ..Params::default()
+        };
+        // Brakes full on: the half-answer is ten times further. Half lifted at `relay_frees`.
+        let deaf = ck_call(&p, 0.0, p.ck_half, 0.0);
+        let freed = ck_call(&p, 0.0, p.ck_half, p.relay_frees);
+        assert!((deaf - 1.0 / 11.0).abs() < 1e-6, "{deaf}");
+        assert!((freed - 1.0 / 6.5).abs() < 1e-6, "{freed}");
+        assert!(ck_call(&p, 0.0, p.ck_half, 1.0e6) > 0.499);
+        // Without brakes the relay changes nothing.
+        let q = Params::default();
+        assert_eq!(ck_call(&q, 0.0, 2.0, 0.0), ck_call(&q, 0.0, 2.0, 5.0));
+        // And so the relay is made faster by a cell that already holds some.
+        let made = |relay: f32| {
+            let c = Cell {
+                h: [0.0, p.ck_half, 0.0, relay],
+                ..cell([0.0; 3], 1.0, [0.0; 2])
+            };
+            finish(&c, &Gathered::default(), &p).h[3] - (1.0 - p.relay_decay) * relay
+        };
+        assert!(made(1.0) > 1.5 * made(0.0), "{} {}", made(1.0), made(0.0));
     }
 
     #[test]

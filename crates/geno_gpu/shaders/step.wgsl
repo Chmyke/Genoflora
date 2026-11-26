@@ -88,7 +88,10 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     let cytokinin = hi.y + P.ck_diffusion * spread.y + P.ck_production * hi.x + P.ck_light * lit * vi - P.ck_decay * hi.y;
     let ca = hi.x / vi;
     let cc = hi.y / vi;
-    let ck_push = (cc / (P.ck_half + cc)) * (P.ck_block / (P.ck_block + ca));
+    let cw = hi.w / vi;
+    // The relay a cell holds lifts its brakes on cytokinin (mirrors rules::ck_call).
+    let ck_heard = P.ck_half * (1.0 + P.ck_brake * (P.relay_frees / (P.relay_frees + cw)));
+    let ck_push = (cc / (ck_heard + cc)) * (P.ck_block / (P.ck_block + ca));
     let drive = ca / (P.half_sat + ca) + ck_push;
     // Soil: solid friction on the move, and push-back on walls pressing on it (mirrors finish).
     let soil = soil_share(pi.xyz);
@@ -102,7 +105,6 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     // Relay made where cytokinin calls, restraint signal made by the skin that holds relay.
     let reading = ck_push * (P.restraint_half / (P.restraint_half + hi.z / vi));
     let relay = hi.w + P.relay_diffusion * spread.w + P.relay_made * reading * vi - P.relay_decay * hi.w;
-    let cw = hi.w / vi;
     let told = cw / (P.relay_half + cw);
     let restraint = hi.z + P.restraint_diffusion * spread.z + P.restraint_made * told * skin * vi - P.restraint_decay * hi.z;
     hh_out[i] = vec4<f32>(auxin, cytokinin, restraint, relay);

@@ -67,6 +67,11 @@ pub struct Params {
     /// Auxin concentration that halves the push of cytokinin (the two hormones oppose each
     /// other: what counts is their ratio).
     pub ck_block: f32,
+    /// How many times the brakes of a cell that holds no relay raise `ck_half`: how deaf to
+    /// cytokinin a cell is before any relay reaches it (0: no brakes, every cell hears alike).
+    pub ck_brake: f32,
+    /// Relay concentration that lifts half of those brakes.
+    pub relay_frees: f32,
     /// Relay a cell makes per step, per unit of its volume, when cytokinin calls at its fullest
     /// (cytokinin does not keep a shoot cell young by itself: it switches on a protein, WUS, that
     /// passes from cell to cell and does).
@@ -166,6 +171,8 @@ impl Params {
             "ck_decay" => &mut self.ck_decay,
             "ck_half" => &mut self.ck_half,
             "ck_block" => &mut self.ck_block,
+            "ck_brake" => &mut self.ck_brake,
+            "relay_frees" => &mut self.relay_frees,
             "relay_made" => &mut self.relay_made,
             "relay_diffusion" => &mut self.relay_diffusion,
             "relay_decay" => &mut self.relay_decay,
@@ -224,6 +231,8 @@ impl Default for Params {
             ck_decay: 0.01,
             ck_half: 1.0,
             ck_block: 1.0,
+            ck_brake: 0.0,
+            relay_frees: 1.0,
             relay_made: 0.02,
             relay_diffusion: 0.02,
             relay_decay: 0.01,

@@ -228,7 +228,7 @@ fn cut(c: &Cells, p: &Params, layers: usize, layer_of: impl Fn(&[f32; 4]) -> Opt
         layer.cytokinin += cytokinin;
         layer.restraint += restraint;
         layer.relay += relay;
-        layer.making += crate::rules::ck_call(p, auxin, cytokinin) * crate::rules::heard(p, restraint);
+        layer.making += crate::rules::ck_call(p, auxin, cytokinin, relay) * crate::rules::heard(p, restraint);
     }
     for layer in &mut out {
         let n = layer.cells.max(1) as f32;

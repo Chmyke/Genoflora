@@ -83,8 +83,8 @@ pub struct GpuSim {
     scan_div: Scan,
 }
 
-/// Size of the uniform block: 52 four-byte fields.
-const PARAMS_BYTES: usize = 208;
+/// Size of the uniform block: 54 four-byte fields.
+const PARAMS_BYTES: usize = 216;
 /// Bytes of one cell's hormones.
 const HORMONE_BYTES: usize = 16;
 
@@ -156,6 +156,8 @@ fn params_bytes(p: &Params, grid: &Grid, capacity: usize) -> Vec<u8> {
         f(p.relay_diffusion),
         f(p.relay_decay),
         f(p.relay_half),
+        f(p.ck_brake),
+        f(p.relay_frees),
     ]
     .concat()
 }

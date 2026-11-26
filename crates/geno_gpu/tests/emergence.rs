@@ -3,7 +3,7 @@
 //! (the software adapter would take hours).
 
 use geno_gpu::{Adapter, GpuSim};
-use geno_sim::checks::{foci, lie, packing, run};
+use geno_sim::checks::{across, foci, lie, packing, run};
 use geno_sim::{Cells, Engine, EngineError, Params};
 
 /// Grows a seed until the tissue is nearly full, or `None` without a graphics card.
@@ -295,5 +295,57 @@ fn without_the_restraint_signal_the_tip_keeps_swelling() -> Result<(), EngineErr
     eprintln!("with the signal {held:?}, without {free:?}");
     let last = |sizes: &[usize]| sizes.iter().rev().take(3).sum::<usize>() / 3;
     assert!(last(&free) >= 2 * last(&held), "{held:?} against {free:?}");
+    Ok(())
+}
+
+/// Mean youth and relay of the cells of a slab across the stem, `depth` under its highest cell.
+fn slab(cells: &Cells, p: &Params, depth: f32) -> (f32, f32) {
+    let in_air = |q: &&[f32; 4]| geno_sim::soil::share(p, &q[..3]) < 0.5;
+    let top = cells
+        .alive()
+        .iter()
+        .filter(in_air)
+        .max_by(|a, b| a[1].total_cmp(&b[1]))
+        .map_or([0.0; 3], |q| [q[0], q[1], q[2]]);
+    let layers = across(cells, p, top, depth, 2.0, 64);
+    let n = layers.iter().map(|l| l.cells).sum::<usize>().max(1) as f32;
+    let mean = |of: fn(&geno_sim::checks::Layer) -> f32| {
+        layers.iter().map(|l| of(l) * l.cells as f32).sum::<f32>() / n
+    };
+    (mean(|l| l.youth), mean(|l| l.relay))
+}
+
+// A tip is a place: young cells at the summit, a mature stem under them. With a relay that only
+// answers cytokinin, it is not one (measured 2026-11-26): every answer along the way is a gentle
+// curve, cytokinin falls twelvefold from the summit to 23 layers down and youth by a factor 1.3,
+// so the whole stem sits next to the dividing threshold. A cell that holds relay hears cytokinin
+// better (WUS switches off the brakes on the answer to cytokinin, Leibfried et al. 2005): the
+// relay then sustains its own making and gathers at the summit. Measured: four layers under the
+// summit against mid-height, relay 1.40 against 0.09 and youth 0.64 against 0.18; without it,
+// 0.84 against 0.24 and 0.51 against 0.32.
+#[test]
+fn a_relay_that_sustains_its_own_making_sets_a_young_tip_apart_from_the_stem() -> Result<(), EngineError> {
+    const NEAR_THE_SUMMIT: f32 = 4.0;
+    let plain = Params::default();
+    let sustained = Params {
+        ck_brake: 10.0,
+        relay_made: 0.1,
+        restraint_made: 0.45,
+        ..plain
+    };
+    let contrast = |p: &Params| -> Result<Option<(f32, f32)>, EngineError> {
+        let Some(cells) = grow(p)? else {
+            return Ok(None);
+        };
+        let height = cells.alive().iter().map(|q| q[1]).fold(p.surface, f32::max) - p.surface;
+        let (tip, stem) = (slab(&cells, p, NEAR_THE_SUMMIT), slab(&cells, p, 0.5 * height));
+        eprintln!("height {height}: youth, relay near the summit {tip:?}, at mid-height {stem:?}");
+        Ok(Some((tip.0 - stem.0, tip.1 / stem.1)))
+    };
+    let (Some(plain), Some(sustained)) = (contrast(&plain)?, contrast(&sustained)?) else {
+        return Ok(());
+    };
+    assert!(plain.0 < 0.3 && plain.1 < 6.0, "{plain:?}");
+    assert!(sustained.0 > 0.35 && sustained.1 > 8.0, "{sustained:?}");
     Ok(())
 }

@@ -66,8 +66,10 @@ fn matches_the_judge_cell_by_cell_on_a_short_run() -> Result<(), EngineError> {
         // The test tissue straddles the soil surface: part of it in the dark, part in the light.
         // Its cells mature fast and answer cytokinin weakly (the test tissue starts full of it), so
         // that some stop dividing within the run. They make the restraint signal too, and answer
-        // the relay weakly (the test tissue starts full of it as well).
+        // the relay weakly (the test tissue starts full of it as well), which lifts their brakes
+        // on cytokinin.
         let p = Params {
+            ck_brake: 2.0,
             restraint_made: 0.01,
             relay_half: 5.0,
             youth_rate: 0.05,
