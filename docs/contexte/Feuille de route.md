@@ -641,7 +641,27 @@ d'auxine est déjà étroit en hauteur (10 cellules sur 2 de haut tiennent plus 
 sa largeur est jeune sur 8 de haut, et près de la pointe l'auxine est plus forte au bord que dans
 l'axe (23 contre 8), l'inverse plus haut (0,1 contre 0,5).
 
-Prochaine étape, à trancher par Mickaël : la planche désigne deux défauts avant la fontaine
-inversée de la racine, le manque de contraste entre pointe et tige (toute la tige au seuil) et la
-silhouette trop épaisse. Chaque cause ajoutée se juge désormais à la planche et au bilan, pas
-seulement au test.
+Contraste de la pointe, mesuré (2026-11-26, priorité choisie par Mickaël). Mesure : jeunesse
+moyenne des cellules jeunes à l'air contre celle des autres (colonnes `youth_young` et
+`youth_other` de la sonde `report`). Référence : 0,53 contre 0,36 à 0,48.
+
+| Essai | Jeunes / autres | Pointe |
+|---|---|---|
+| Cytokinine qui ne répond qu'à la pleine lumière (`ck_half` 3 ou 10) | 0,54 à 0,56 / 0,28 à 0,30 | 124 à 1 400 cellules selon le signal |
+| Relais plus fort (`relay_made` 0,05 ou 0,1) | 0,54 à 0,64 / 0,29 à 0,36 | 850 à 7 200 cellules, tige de 27 de large |
+| Signal de retenue plus fort (jusqu'à dix fois) | inchangé | plus petite, puis aucune tige |
+| Réponse au relais en interrupteur (puissance 4, essai non gardé) | 0,66 à 0,88 / 0,17 à 0,27 | tout ou rien : une boule de 3 500 à 10 000 cellules, ou aucune tige |
+
+Aucun réglage ne donne le contraste : les cellules jeunes restent juste au-dessus du seuil. Une
+réponse en interrupteur le donne, mais elle détruit le réglage gradué de la taille (boule ou
+rien, sur neuf réglages), donc elle n'est pas la cause manquante à elle seule et n'a pas été
+ajoutée. Ce que ces mesures désignent : le champ de relais est un dégradé doux sur toute la
+largeur de la tige, sans rien qui sépare en profondeur l'endroit où il est fabriqué (sous la
+peau, dans le réel) de l'endroit où il agit (au sommet).
+
+Prochaine étape : avant toute règle, ajouter au bilan le profil en profondeur sous le sommet et
+en travers de la tige (cytokinine, relais, signal de retenue, jeunesse), le comparer à ce que
+décrit Gruel 2016 (relais absent de la peau, fabriqué dans une bande à profondeur fixe), et
+proposer à Mickaël la cause que l'écart désigne. Ensuite la silhouette trop épaisse, puis la
+fontaine inversée de la racine. Chaque cause se juge à la planche et au bilan, pas seulement au
+test.
