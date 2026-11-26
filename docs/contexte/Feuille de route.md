@@ -894,12 +894,15 @@ les liens ne viennent que du lignage, avec des sphères qui ne remplissent pas l
 mère. Trois formes de lien essayées (élastique, paroi qui cède, paroi qui cède dans un sens) :
 aucune ne donne une tige plus fine. Ce prototype n'est donc pas à porter sur la carte en l'état.
 
-Piège rencontré trois fois ce jour : quand un autre programme occupe la carte graphique (ici un
-entraînement d'images, carte à 90 %), les tests de `geno_gpu/tests/emergence.rs` ne finissent pas
-(plus d'une heure au lieu de 4 minutes, un cœur occupé à attendre), et `check.ps1` finit rouge sans
-dire pourquoi. Avant de conclure à une panne, regarder qui occupe la carte. État à ce commit :
-format, clippy, tests du juge (56) et comparaison au juge (10) verts ; tests d'émergence non
-passés, carte occupée, à relancer quand elle est libre (ce lot ne touche que le juge).
+Piège rencontré cinq fois ce jour, et d'abord mal attribué : les tests de
+`geno_gpu/tests/emergence.rs` ne finissaient pas (plus d'une heure au lieu de 4 minutes), et
+`check.ps1` finissait rouge sans dire pourquoi. La carte occupée par un autre programme (un
+entraînement d'images, carte à 90 %) a été accusée ; le blocage est revenu carte libre. Vu de près :
+sept tests finis, un seul fil tournant à vide sur un cœur, hors de la carte. La cause est dans le
+test : plusieurs plantes poussaient en même temps dans le même programme, et la garde ne couvrait
+que la création de l'accès à la carte. Corrigé : une plante à la fois (209 s à la suite contre
+243 s côte à côte, donc sans coût). Vérification complète verte ensuite, tests d'émergence compris,
+ce qui valide aussi le lot des parois. Une carte occupée ralentit toujours les mesures.
 
 Prochaine étape, décidée par Mickaël (2026-11-26) : la pointe d'abord. Le prototype des parois
 reste dans le juge, éteint. Reprendre la taille de la pointe avec l'auto-entretien (la calotte

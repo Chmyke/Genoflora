@@ -14,16 +14,16 @@ fn grow(p: &Params) -> Result<Option<Cells>, EngineError> {
 /// Same, showing the tissue to `watch` every `every` steps on the way.
 fn grow_watched(p: &Params, every: u32, mut watch: impl FnMut(&Cells)) -> Result<Option<Cells>, EngineError> {
     const CAPACITY: usize = 16_384;
-    // PITFALL: tests run in parallel threads, and creating several devices at once has left a
-    // run spinning forever on one core (seen again 2026-11-25); the plants then grow in parallel.
+    // PITFALL: tests run in parallel threads, and several devices alive at once have left a run
+    // spinning forever on one core, off the card. Guarding the creation alone was not enough
+    // (seen three times on 2026-11-26, seven tests done and one thread spinning for 80 minutes),
+    // so one plant grows at a time. It costs nothing: the card is the limit, and the tests take
+    // 209 s in a row against 243 s side by side.
     static ONE_AT_A_TIME: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    let created = {
-        let _turn = ONE_AT_A_TIME
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        GpuSim::new(p, &Cells::seed(p, CAPACITY, 1.0), Adapter::Hardware)
-    };
-    let mut sim = match created {
+    let _turn = ONE_AT_A_TIME
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut sim = match GpuSim::new(p, &Cells::seed(p, CAPACITY, 1.0), Adapter::Hardware) {
         Ok(sim) => sim,
         Err(e) => {
             eprintln!("hardware adapter skipped: {e}");
