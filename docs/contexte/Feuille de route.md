@@ -901,6 +901,7 @@ dire pourquoi. Avant de conclure à une panne, regarder qui occupe la carte. Ét
 format, clippy, tests du juge (56) et comparaison au juge (10) verts ; tests d'émergence non
 passés, carte occupée, à relancer quand elle est libre (ce lot ne touche que le juge).
 
-Prochaine étape : décision de Mickaël (poursuivre les parois autrement, ou revenir à la pointe).
-Restent ensuite la taille de la pointe avec l'auto-entretien (la calotte aussi large que la tige)
-et la fontaine inversée de la racine.
+Prochaine étape, décidée par Mickaël (2026-11-26) : la pointe d'abord. Le prototype des parois
+reste dans le juge, éteint. Reprendre la taille de la pointe avec l'auto-entretien (la calotte
+aussi large que la tige, et qui grossit), puis la fontaine inversée de la racine. Ce travail se
+mesure sur la carte : la relancer libre, et commencer par repasser `check.ps1` en entier.
