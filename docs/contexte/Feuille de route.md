@@ -1160,3 +1160,46 @@ fait du bout un puits ; le courant descendant du centre peut alors tenir par le 
 gravité ne sert plus qu'à orienter la coiffe. Piste suivante : mesurer le bilan d'auxine du bout
 (ce qui entre, ce qui reflue, ce qui disparaît), puis essayer un bout qui consomme son auxine.
 État du code : `grav_skin` et `pin_fair` dans le juge et sur la carte, éteints ; rien d'autre.
+
+### L'auxine déclenche sa propre neutralisation : la plante s'affine enfin (2026-11-28)
+
+Suite de la piste « un bout qui consomme son auxine ». Essai par réglage d'abord : augmenter la
+perte partout (`decay=0.01`) tue la plante, elle a besoin d'auxine pour pousser. La cause réelle
+est locale : l'auxine allume ce qui la neutralise (enzymes GH3, Staswick 2005), donc une cellule
+en perd d'autant plus vite qu'elle en tient. Règle : `burn` (part perdue par pas dans une cellule
+pleine) et `burn_half` (dose à mi-régime, 10). Née dans le juge avec son test
+(`a_cell_full_of_auxin_breaks_it_down_faster`), recopiée dans `step.wgsl`, comparée cellule par
+cellule (`auxin_breaks_down_like_on_the_judge`).
+
+Dans le juge, à effectif égal (3000 cellules) :
+
+| `burn` | Tige, hauteur × largeur | Racine, profondeur × largeur |
+|---|---|---|
+| 0 | 29 × 16 | 26 × 13 |
+| 0,005 | 36 × 16 | 26 × 12 |
+| 0,01 | 42 × 15 | 30 × 11 |
+| 0,02 | aucune tige | 23 × 8 (320 cellules) |
+
+Sur la carte :
+
+| | Référence, 12 122 cellules | `burn=0.01`, 10 985 cellules | `burn=0.01`, 15 347 cellules |
+|---|---|---|---|
+| Tige | 73 × 17,5 | 109 × 17,4 | 139 × 18,2 |
+| Racine | 51 × 17,2 | 58 × 14,3 | 74 × 15,2 |
+
+C'est la première règle qui affine la silhouette : moitié plus de hauteur à largeur égale, racine
+plus fine. Le maximum d'auxine du bout de racine est plafonné (22 au lieu de 39 dans le juge), la
+zone jeune de la racine est plus courte. Image : `target/planches/Auxine consommee entiere.png`.
+
+Limites et suites :
+
+- La plante pousse plus lentement (42 000 pas pour remplir la carte, contre 27 000).
+- Allumée dans le génome par défaut, la règle fait tomber cinq contrôles d'émergence : leurs
+  génomes d'essai ont été équilibrés sans elle, trois n'arrivent plus à remplir la carte. Elle
+  reste donc éteinte par défaut. L'allumer est un chantier de rééquilibrage à part : reprendre un
+  à un ces cinq contrôles (`emergence.rs`) et ré-accorder ce qui dépendait d'un excès d'auxine.
+- Elle ne supprime pas la béquille de la gravité sentie partout, elle n'a pas été essayée avec
+  moins de gravité à dose faible (à `burn=0.05 gravisense=0.1` la racine tient, 17 de profondeur,
+  mais maigre).
+- Défaut de la planche vu au passage : sur une tige haute qui penche, la vue en coupe montre un
+  amas « détaché » au sommet. La vue entière (`--capture` sans `cut`) montre une colonne continue.

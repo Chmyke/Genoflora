@@ -150,7 +150,10 @@ pub fn finish(me: &Cell, g: &Gathered, p: &Params) -> Cell {
     // Auxin is made everywhere, more where light reaches the cell.
     let lit = soil::shaded(p, soil::light(p, pi), g.cover);
     let made = (p.production + p.light_production * lit) * volume;
-    let auxin = hi[0] + p.diffusion * g.spread[0] + p.polar * g.pumped + made - p.decay * hi[0];
+    // Auxin switches on its own breakdown: a cell full of it loses it faster.
+    let dose = hi[0] / volume;
+    let burnt = p.burn * hi[0] * dose / (p.burn_half + dose);
+    let auxin = hi[0] + p.diffusion * g.spread[0] + p.polar * g.pumped + made - p.decay * hi[0] - burnt;
     // Cytokinin is made where auxin is and where light reaches the cell, then wanders with no
     // preferred direction.
     let cytokinin =
@@ -345,6 +348,7 @@ mod tests {
             production: 0.0,
             light_production: 0.0,
             decay: 0.0,
+            burn: 0.0,
             ..Params::default()
         };
         // Both cells pump down: the top one hands auxin to the bottom one, which faces no one.
@@ -468,6 +472,26 @@ mod tests {
         };
         let q = pumps_after(&numb, 1.0, &inner, 1000);
         assert!((q[1] + p.gravisense).abs() < 0.01, "{q:?}");
+    }
+
+    #[test]
+    fn a_cell_full_of_auxin_breaks_it_down_faster() {
+        let p = Params {
+            burn: 0.01,
+            burn_half: 10.0,
+            ..Params::default()
+        };
+        let plain = Params { burn: 0.0, ..p };
+        // What the breakdown takes in one step from a cell of volume one holding `auxin`.
+        let burnt = |auxin: f32| {
+            let c = cell([0.0; 3], 1.0, [auxin, 0.0]);
+            let g = Gathered::default();
+            finish(&c, &g, &plain).h[0] - finish(&c, &g, &p).h[0]
+        };
+        // Half the full pace at `burn_half`, next to nothing in a cell that holds little.
+        assert!((burnt(10.0) - 0.5 * 0.01 * 10.0).abs() < 1e-5, "{}", burnt(10.0));
+        assert!(burnt(0.1) < 0.02 * 0.01 * 0.1, "{}", burnt(0.1));
+        assert!(burnt(1000.0) > 0.98 * 0.01 * 1000.0, "{}", burnt(1000.0));
     }
 
     #[test]

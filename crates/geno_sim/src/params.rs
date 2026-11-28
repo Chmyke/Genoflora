@@ -63,6 +63,13 @@ pub struct Params {
     pub light_production: f32,
     /// Fraction of hormone lost per step.
     pub decay: f32,
+    /// Fraction of its auxin a cell full of it breaks down per step, on top of `decay`: auxin
+    /// switches on what puts it away (the GH3 enzymes that bind it to amino acids, Staswick et
+    /// al. 2005), so a cell loses it the faster the more it holds. 0: none.
+    /// PROTOTYPE (2026-11-28), off in the default genome.
+    pub burn: f32,
+    /// Auxin concentration at which a cell breaks it down at half that pace.
+    pub burn_half: f32,
     /// Cytokinin a cell makes per step, per unit of auxin it holds.
     pub ck_production: f32,
     /// Cytokinin a cell makes per step, per unit of its volume, in full light (light wakes the
@@ -178,6 +185,8 @@ impl Params {
             "production" => &mut self.production,
             "light_production" => &mut self.light_production,
             "decay" => &mut self.decay,
+            "burn" => &mut self.burn,
+            "burn_half" => &mut self.burn_half,
             "ck_production" => &mut self.ck_production,
             "ck_light" => &mut self.ck_light,
             "ck_diffusion" => &mut self.ck_diffusion,
@@ -235,6 +244,12 @@ impl Default for Params {
             production: 0.001,
             light_production: 0.03,
             decay: 0.001,
+            // Off in the default genome. BALANCE, measured 2026-11-28 at equal cell count (3000
+            // on the judge): stem 29 high for 16 wide at 0, 36 for 16 at 0.005, 42 for 15 at
+            // 0.01, no stem at all at 0.02. Switched on by default it breaks five emergence tests
+            // (their genomes were balanced without it): to be rebalanced as a work of its own.
+            burn: 0.0,
+            burn_half: 10.0,
             // Off in the default genome: measured on 2026-11-25, cytokinin that only diffuses
             // makes no second pole (see docs/contexte/Feuille de route.md).
             ck_production: 0.0,

@@ -84,7 +84,10 @@ fn step(@builtin(global_invocation_id) g: vec3<u32>) {
     }
     let lit = light(pi.xyz) * exp(-P.shade * cover);
     let made = (P.production + P.light_production * lit) * vi;
-    let auxin = hi.x + P.diffusion * spread.x + P.polar * pumped + made - P.decay * hi.x;
+    // Auxin switches on its own breakdown (mirrors finish).
+    let dose = hi.x / vi;
+    let burnt = P.burn * hi.x * dose / (P.burn_half + dose);
+    let auxin = hi.x + P.diffusion * spread.x + P.polar * pumped + made - P.decay * hi.x - burnt;
     let cytokinin = hi.y + P.ck_diffusion * spread.y + P.ck_production * hi.x + P.ck_light * lit * vi - P.ck_decay * hi.y;
     let ca = hi.x / vi;
     let cc = hi.y / vi;

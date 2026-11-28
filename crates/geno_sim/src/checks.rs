@@ -677,6 +677,7 @@ mod tests {
             production: 0.0,
             light_production: 0.0,
             decay: 0.0,
+            burn: 0.0,
             ck_production: 0.0,
             ck_light: 0.0,
             ck_decay: 0.0,
