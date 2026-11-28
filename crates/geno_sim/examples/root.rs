@@ -41,6 +41,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     };
     let depth = p.surface - tip[1];
+    let air: Vec<&[f32; 4]> = cells.alive().iter().filter(|q| !in_soil(q)).collect();
+    let height = air.iter().map(|q| q[1]).fold(p.surface, f32::max) - p.surface;
+    println!("stem: {} cells in the air, {height:.1} high", air.len());
     println!(
         "step {done}: {} cells, {} in the soil, root {depth:.1} deep",
         cells.count,

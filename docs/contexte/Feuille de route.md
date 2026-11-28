@@ -1132,3 +1132,31 @@ l'est pas encore. Ce qui manque pour que la fontaine resserre le maximum : dans 
 par la peau rentre vers le centre juste au-dessus de la pointe et y repart vers le bas ; ici il
 remonte et se perd le long de la racine (auxine du bord 3 contre 1 à l'axe à 10 du bout).
 Planches : `target/planches/Racine reference.png`, `target/planches/Racine peau sans gravite.png`.
+
+### La racine tient par la gravité sentie partout : essai du réalisme, échec instructif (2026-11-28)
+
+Mandat de Mickaël : « fais ce qu'il y a de mieux, le plus réaliste ». Dans le réel, seules les
+cellules de la coiffe portent des grains lourds, et la coiffe se forme là où l'auxine est à son
+maximum (Sabatini 1999). Essayé dans le juge (3000 cellules), puis retiré du code : une cellule ne
+sent la gravité qu'à proportion de son auxine (`auxine / (seuil + auxine)`).
+
+| Seuil d'auxine pour les grains | Racine | Maximum d'auxine au bout | Pompes au bout |
+|---|---|---|---|
+| aucun (toute cellule, référence) | 23 de profondeur | 22 à 39 | vers le bas partout |
+| 3 | 15 | 11 à 18 | vers le bas, plus faibles |
+| 10 | 11 | 4 à 6 | presque sans direction |
+| 30 | 8,5 | 1 | vers le haut |
+
+Constat : plus la gravité est réservée aux cellules riches en auxine, plus le maximum fond, et
+avec lui la racine. Le maximum ne s'entretient pas : il n'existe que parce que toutes les cellules
+de la plante pompent vers le bas. C'est la béquille cachée du modèle, la même qui interdisait la
+fontaine. Les pompes « le long du flux » ne suffisent pas à la remplacer : au bout de la racine
+l'auxine n'a nulle part où aller, elle reflue par diffusion, et le flux mesuré par la cellule
+s'inverse.
+
+Ce que cela désigne, à creuser avant toute règle : dans le réel le bout de racine n'est pas un
+cul-de-sac. L'auxine y est consommée (dégradée, conjuguée) et la coiffe perd ses cellules, ce qui
+fait du bout un puits ; le courant descendant du centre peut alors tenir par le flux seul, et la
+gravité ne sert plus qu'à orienter la coiffe. Piste suivante : mesurer le bilan d'auxine du bout
+(ce qui entre, ce qui reflue, ce qui disparaît), puis essayer un bout qui consomme son auxine.
+État du code : `grav_skin` et `pin_fair` dans le juge et sur la carte, éteints ; rien d'autre.
