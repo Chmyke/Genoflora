@@ -1203,3 +1203,29 @@ Limites et suites :
   mais maigre).
 - Défaut de la planche vu au passage : sur une tige haute qui penche, la vue en coupe montre un
   amas « détaché » au sommet. La vue entière (`--capture` sans `cut`) montre une colonne continue.
+
+Rééquilibrage demandé par Mickaël (2026-11-28), premier passage : mesuré, pas abouti. Chaque
+contrôle d'émergence relancé avec la règle allumée par défaut, chiffres affichés
+(`cargo test -p geno_gpu --test emergence -- --nocapture --test-threads=1`) :
+
+| Contrôle | `burn=0.005` | `burn=0.01` |
+|---|---|---|
+| `stretched_cells_line_up_with_the_auxin_flow` | passe (alignement 0,83 contre 0,51) | passe |
+| `maturing_cells_make_the_root_grow_from_its_tip` | passe, racine 207 contre 47 | la carte ne se remplit plus |
+| `the_reference_plant_does_not_pile_up` | passe | passe |
+| `without_the_restraint_signal_the_tip_keeps_swelling` | passe (300 contre 1000) | passe |
+| `the_tip_of_the_stem_holds_its_size` | de justesse non : 94 à 365 cellules, plancher exigé 100 | tombe |
+| `light_made_cytokinin_wakes_the_top_into_a_ball_not_a_shoot` | 0 cellule en l'air : le sommet ne s'éveille plus à `ck_light=0.03` | tombe |
+| `shaded_cells_mature_and_a_stem_rises_from_the_lit_top` | 89 cellules en l'air, 15 de haut, racine 178 : presque tout part en racine | tombe |
+| `a_relay_that_sustains_its_own_making…` | sans auto-entretien passe ; avec, plus de tige | tombe |
+
+Lecture : ce ne sont pas des seuils à décaler. Tous les échecs disent la même chose : la règle
+affaiblit la naissance de la tige, parce que la pointe de tige vit encore sur l'auxine (constat
+du 2026-11-26, « la pointe tient par l'auxine »). Moins d'auxine partout, c'est une racine plus
+fine mais aussi une tige qui démarre mal dès que le génome est moins généreux que celui de
+référence. Allumer `burn` par défaut demande donc d'abord que la pointe de tige tienne par son
+propre système (relais porté par la cytokinine seule), ce qui est le chantier resté ouvert.
+En attendant : `burn` reste à 0 par défaut, à allumer par réglage (`burn=0.01` sur le génome de
+référence donne la plante élancée). Ordre conseillé pour la suite : 1. pointe de tige autonome
+(sur le banc figé `relay_loop`, puis la carte) ; 2. `burn` allumé et les contrôles remesurés ;
+3. fontaine (`grav_skin`) et gravité réservée à la coiffe.
